@@ -1,0 +1,2 @@
+﻿1. make movement based on velocity
+2. make player rotation follow cursor

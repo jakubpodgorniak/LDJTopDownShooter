@@ -1,10 +1,10 @@
 ﻿using System;
+using System.Globalization;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 
-namespace LDJTopDownShooter
-{
+namespace LDJTopDownShooter {
     public class Game : Microsoft.Xna.Framework.Game
     {
         public static float DeltaTime { get; private set; }
@@ -13,6 +13,7 @@ namespace LDJTopDownShooter
         private GraphicsDeviceManager _graphics;
         private SpriteBatch _spriteBatch;
 
+        private SpriteFont _arial10;
         private Texture2D _character_texture;
         private Player _player;
 
@@ -33,6 +34,7 @@ namespace LDJTopDownShooter
         protected override void LoadContent()
         {
             _spriteBatch = new SpriteBatch(GraphicsDevice);
+            _arial10 = Content.Load<SpriteFont>("fonts/Arial10");
             _character_texture = Content.Load<Texture2D>("player");
         }
 
@@ -45,6 +47,8 @@ namespace LDJTopDownShooter
             if (keyboard.IsKeyDown(Keys.Escape))
                 Exit();
 
+
+            // movement
             Vector2 move = Vector2.Zero;
             bool moved = false;
             bool moveLeft = keyboard.IsKeyDown(Keys.A);
@@ -77,6 +81,30 @@ namespace LDJTopDownShooter
                 _player.Position += (move * DeltaTime * Player.MovementSpeed);
             }
 
+            // movement
+
+            //rotation
+            if (keyboard.IsKeyDown(Keys.Q)) {
+                float rotation_angle = Player.RotationSpeed * DeltaTime;
+
+                float x = _player.Facing.X * MathF.Cos(rotation_angle)
+                    - _player.Facing.Y * MathF.Sin(rotation_angle);
+                float y = _player.Facing.X * MathF.Sin(rotation_angle)
+                    + _player.Facing.Y * MathF.Cos(rotation_angle);
+
+                _player.Facing = new Vector2(x, y);
+            } else if (keyboard.IsKeyDown(Keys.E)) {
+                float rotation_angle = (-1f) * Player.RotationSpeed * DeltaTime;
+
+                float x = _player.Facing.X * MathF.Cos(rotation_angle)
+                    - _player.Facing.Y * MathF.Sin(rotation_angle);
+                float y = _player.Facing.X * MathF.Sin(rotation_angle)
+                    + _player.Facing.Y * MathF.Cos(rotation_angle);
+
+                _player.Facing = new Vector2(x, y);
+            }
+            //rotation
+
             base.Update(gameTime);
         }
 
@@ -86,9 +114,11 @@ namespace LDJTopDownShooter
 
             _spriteBatch.Begin(blendState: BlendState.AlphaBlend);
 
-
             var (x, y) = GetScreenPosition(_player.Position);
-            _spriteBatch.Draw(_character_texture, new Rectangle(x, y, 64, 64), Color.White);
+            float rotation = _player.GetRotation();
+            _spriteBatch.Draw(_character_texture, new Rectangle(x, y, 64, 64), null, Color.White, rotation, new Vector2(32, 32), SpriteEffects.None, 0);
+            
+            _spriteBatch.DrawString(_arial10, rotation.ToString("F2", CultureInfo.InvariantCulture), new Vector2(x, y), Color.Black);
 
             _spriteBatch.End();
 
