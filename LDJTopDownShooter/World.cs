@@ -9,7 +9,7 @@ public static class World {
     public const float MIN_X = 0.25f;
     public const float MAX_X = 9.75f;
     public const float MIN_Y = 0.25f;
-    public const float MAX_Y = 7.75f;
+    public const float MAX_Y = 5.375f;
 
     private static Texture2D _pixel_texture;
 
@@ -27,6 +27,12 @@ public static class World {
         int y = (int)Math.Floor(position.Y * PIXELS_PER_UNIT);
 
         return (x, y);
+    }
+
+    public static Vector2 screen_2_world(Vector2 position) {
+        return new Vector2(
+            position.X / PIXELS_PER_UNIT,
+            position.Y / PIXELS_PER_UNIT);
     }
 
     public static Vector2 rotate_vector2d_by_angle(Vector2 vec2, float radians) {

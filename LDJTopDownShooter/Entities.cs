@@ -8,9 +8,9 @@ using Microsoft.Xna.Framework.Input;
 namespace LDJTopDownShooter;
 
 public enum WeaponType {
-    Shotgun,
-    Scythe,
-    Laser
+    Shotgun = 0,
+    Scythe = 1,
+    Laser = 2
 }
 
 public static class CharacterHelper {
@@ -70,6 +70,12 @@ public class Player
         // movement
 
         //rotation
+        Vector2 mouse_pos = CustomInput.mouse_vec2;
+        Vector2 mouse_world_pos = World.screen_2_world(mouse_pos);
+        Vector2 new_facing = mouse_world_pos - position;
+        new_facing.Normalize();
+        facing = Vector2.Lerp(facing, new_facing, ROTATION_SPEED * Game.delta_time);
+
         if (CustomInput.is_key_pressed(Keys.Q)) {
             float rotation_angle = ROTATION_SPEED * Game.delta_time;
 
@@ -353,6 +359,8 @@ public static class Shotgun {
     }
 
     public static void fire(Vector2 origin, Vector2 direction) {
+        direction.Normalize();
+
         if (next_bullet_index >= MAX_BULLETS) {
             next_bullet_index = 0;
         }
