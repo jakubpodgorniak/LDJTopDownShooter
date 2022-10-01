@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
 
 namespace LDJTopDownShooter;
 
@@ -25,10 +27,60 @@ public class Player
     public Vector2 facing = Vector2.UnitX;
 
     public float get_rotation() => CharacterHelper.facing_2_rotation(facing);
+
+    public void update() {
+        // movement
+        Vector2 move = Vector2.Zero;
+        bool moved = false;
+        bool moveLeft = CustomInput.is_key_pressed(Keys.A);
+        bool moveUp = CustomInput.is_key_pressed(Keys.W);
+        bool moveRight = CustomInput.is_key_pressed(Keys.D);
+        bool moveDown = CustomInput.is_key_pressed(Keys.S);
+
+        if (moveLeft && !moveRight) {
+            move -= Vector2.UnitX;
+            moved = true;
+        }
+
+        if (moveRight && !moveLeft) {
+            move += Vector2.UnitX;
+            moved = true;
+        }
+
+        if (moveUp && !moveDown) {
+            move -= Vector2.UnitY;
+            moved = true;
+        }
+
+        if (moveDown && !moveUp) {
+            move += Vector2.UnitY;
+            moved = true;
+        }
+
+        if (moved) {
+            move.Normalize();
+            position += (move * Game.delta_time * MOVEMENT_SPEED);
+        }
+
+        // movement
+
+        //rotation
+        if (CustomInput.is_key_pressed(Keys.Q)) {
+            float rotation_angle = ROTATION_SPEED * Game.delta_time;
+
+            facing = World.rotate_vector2d_by_angle(facing, rotation_angle);
+        } else if (CustomInput.is_key_pressed(Keys.E)) {
+            float rotation_angle = (-1f) * ROTATION_SPEED * Game.delta_time;
+
+            facing = World.rotate_vector2d_by_angle(facing, rotation_angle);
+        }
+        //rotation
+    }
 }
 
 public static class EnemiesManager {
-    private const int MAX_ENEMIES_COUNT = 300;
+    public const int MAX_ENEMIES_COUNT = 300;
+
     private static Enemy[] enemies = new Enemy[MAX_ENEMIES_COUNT];
     private static int next_enemy_id = 0;
     
@@ -126,8 +178,12 @@ public static class EnemiesManager {
         }
     }
 
-    public static void kill(Enemy enemy) {
-        enemy.is_active = false;
+    public static void gain_damage(Enemy enemy, float damage) {
+        enemy.health -= damage;
+
+        if (enemy.health <= 0) {
+            enemy.is_active = false;
+        }
     }
 }
 
@@ -138,6 +194,7 @@ public class Enemy {
     public Vector2 position;
     public Vector2 facing;
     public CircleCollider collider;
+    public float health = 1.0f;
 }
 
 public static class Shotgun {
@@ -203,7 +260,7 @@ public static class Shotgun {
                 }
 
                 if (CollisionDetection.check_circle_point_collision(enemy.collider, bullet.collider)) {
-                    EnemiesManager.kill(enemy);
+                    EnemiesManager.gain_damage(enemy, 10.0f);
                     destroy_bullet(bullet);
                     break;
                 }
@@ -326,7 +383,7 @@ public static class Scythe {
                 }
 
                 if (CollisionDetection.check_circle_point_collision(enemy.collider, hit_point.collider)) {
-                    EnemiesManager.kill(enemy);
+                    EnemiesManager.gain_damage(enemy, 10.0f);
                     continue;
                 }
             }
@@ -349,7 +406,102 @@ public static class Scythe {
 }
 
 public static class Laser {
+    public static float LASER_POWER = 10.0f;
+    public static float LASER_LENGTH = 25.0f;
+    
+    private static List<Enemy> enemies_hit = new List<Enemy>(EnemiesManager.MAX_ENEMIES_COUNT);
+    private static bool is_turn_on = false;
 
+    private static Texture2D _pixel_texture;
+    private static Vector2 last_shoot_origin;
+    private static Vector2 last_shoot_end;
+
+    public static void load_content(GraphicsDevice device) {
+        _pixel_texture = new Texture2D(device, 1, 1);
+        _pixel_texture.SetData(new[] { new Color(255, 255, 255, 255) });
+    }
+
+    public static void dispose() {
+        _pixel_texture.Dispose();
+    }
+
+    public static void turn_on() {
+        is_turn_on = true;
+    }
+
+    public static void turn_off() {
+        is_turn_on = false;
+    }
+
+    public static void update(Vector2 origin, Vector2 direction) {
+        if (!is_turn_on) {
+            return;
+        }
+
+        enemies_hit.Clear();
+
+        Vector2 end = origin + (direction * LASER_LENGTH);
+
+        last_shoot_origin = origin;
+        last_shoot_end = end;
+
+        foreach (var enemy in EnemiesManager.get_enemies()) {
+            if (!enemy.is_active) {
+                continue;
+            }
+
+            if (CollisionDetection.check_circle_line_segment_collision(enemy.collider, origin, end)) {
+                enemies_hit.Add(enemy);
+            }
+        }
+
+        if (enemies_hit.Count == 0) {
+            return;
+        }
+
+        Enemy closest_enemy = enemies_hit[0];
+        float closest_distance = Vector2.Distance(origin, closest_enemy.collider.position);
+
+        int i = 1;
+        while (i < enemies_hit.Count) {
+            var enemy = enemies_hit[i];
+            float distance = Vector2.Distance(origin, enemy.collider.position);
+
+            if (distance < closest_distance) {
+                closest_distance = distance;
+                closest_enemy = enemy;
+            }
+
+            i++;
+        }
+
+        last_shoot_end = origin + (direction * Vector2.Distance(closest_enemy.collider.position, origin));
+
+        EnemiesManager.gain_damage(closest_enemy, Game.delta_time * LASER_POWER);
+    }
+
+    public static void render(SpriteBatch sprite_batch) {
+        if (!is_turn_on) {
+            return;
+        }
+
+        Vector2 laser_direction = last_shoot_end - last_shoot_origin;
+        float radians = MathF.Atan2(laser_direction.Y, laser_direction.X);
+        var (x, y) = World.get_screen_position(last_shoot_origin);
+        sprite_batch.Draw(
+            _pixel_texture,
+            new Rectangle(
+                x,
+                y,
+                (int)Math.Floor(laser_direction.Length() * World.PIXELS_PER_UNIT),
+                3),
+            null,
+            Color.Red,
+            radians,
+            Vector2.Zero,
+            SpriteEffects.None,
+            0);
+    }
 }
 
 public class Bullet { 
@@ -383,5 +535,35 @@ public static class CollisionDetection {
         Vector2 distance = circle.position - point.position;
 
         return distance.Length() <= circle.radius;
+    }
+
+    public static bool check_circle_line_segment_collision(CircleCollider circle, Vector2 origin, Vector2 end) {
+        if (check_circle_point_collision(circle, new PointCollider { position = origin })) {
+            return true;
+        }
+
+        if (check_circle_point_collision(circle, new PointCollider { position = end })) {
+            return true;
+        }
+
+        Vector2 direction = end - origin;
+        Vector2 lc = circle.position - origin;
+        Vector2 p = project(lc, direction);
+        Vector2 nearest = origin + p;
+
+        return check_circle_point_collision(circle, new PointCollider { position = nearest })
+            && p.Length() <= direction.Length()
+            && 0 <= Vector2.Dot(p, direction);
+    }
+
+    private static Vector2 project(Vector2 project, Vector2 onto) {
+        float d = Vector2.Dot(onto, onto);
+        if (0 < d) {
+            float dp = Vector2.Dot(project, onto);
+
+            return Vector2.Multiply(onto, dp / d);
+        }
+
+        return onto;
     }
 }

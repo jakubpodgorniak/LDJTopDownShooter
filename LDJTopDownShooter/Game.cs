@@ -55,6 +55,7 @@ namespace LDJTopDownShooter {
             EnemiesManager.load_content(Content);
             Shotgun.load_content(Content);
             Scythe.load_content(GraphicsDevice);
+            Laser.load_content(GraphicsDevice);
         }
 
         protected override void UnloadContent() {
@@ -67,6 +68,7 @@ namespace LDJTopDownShooter {
             World.dispose();
             Shotgun.dispose();
             Scythe.dispose();
+            Laser.dispose();
         }
 
         protected override void Update(GameTime game_time)
@@ -83,55 +85,8 @@ namespace LDJTopDownShooter {
                 Exit();
 
             EnemiesManager.update();
-            Scythe.update(game_time);
-            Shotgun.update();
 
-            // movement
-            Vector2 move = Vector2.Zero;
-            bool moved = false;
-            bool moveLeft = keyboard.IsKeyDown(Keys.A);
-            bool moveUp = keyboard.IsKeyDown(Keys.W);
-            bool moveRight = keyboard.IsKeyDown(Keys.D);
-            bool moveDown = keyboard.IsKeyDown(Keys.S);
-
-            if (moveLeft && !moveRight) {
-                move -= Vector2.UnitX;
-                moved = true;
-            }
-
-            if (moveRight && !moveLeft) {
-                move += Vector2.UnitX;
-                moved = true;
-            }
-
-            if (moveUp && !moveDown) {
-                move -= Vector2.UnitY;
-                moved = true;
-            }
-
-            if (moveDown && !moveUp) {
-                move += Vector2.UnitY;
-                moved = true;
-            }
-
-            if (moved) {
-                move.Normalize();
-                _player.position += (move * delta_time * Player.MOVEMENT_SPEED);
-            }
-
-            // movement
-
-            //rotation
-            if (keyboard.IsKeyDown(Keys.Q)) {
-                float rotation_angle = Player.ROTATION_SPEED * delta_time;
-
-                _player.facing = World.rotate_vector2d_by_angle(_player.facing, rotation_angle);
-            } else if (keyboard.IsKeyDown(Keys.E)) {
-                float rotation_angle = (-1f) * Player.ROTATION_SPEED * delta_time;
-
-                _player.facing = World.rotate_vector2d_by_angle(_player.facing, rotation_angle);
-            }
-            //rotation
+            _player.update();
 
             // enemies spawn
             double current_game_time = game_time.TotalGameTime.TotalSeconds;
@@ -147,8 +102,14 @@ namespace LDJTopDownShooter {
 
             // change weapon
             if (CustomInput.is_key_down(Keys.D1)) {
+                if (_current_weapon == WeaponType.Laser) {
+                    Laser.turn_off();
+                }
                 _current_weapon = WeaponType.Shotgun;
             } else if (CustomInput.is_key_down(Keys.D2)) {
+                if (_current_weapon == WeaponType.Laser) {
+                    Laser.turn_off();
+                }
                 _current_weapon = WeaponType.Scythe;
             } else if (CustomInput.is_key_down(Keys.D3)) {
                 _current_weapon = WeaponType.Laser;
@@ -165,9 +126,19 @@ namespace LDJTopDownShooter {
                         _player.facing,
                         game_time.TotalGameTime.TotalSeconds);
                 } else if (_current_weapon == WeaponType.Laser) {
-
+                    Laser.turn_on();
                 }
             }
+
+            if (CustomInput.is_mouse_button_up(MouseButton.Left)) {
+                if (_current_weapon == WeaponType.Laser) {
+                    Laser.turn_off();
+                }
+            }
+
+            Scythe.update(game_time);
+            Shotgun.update();
+            Laser.update(_player.position, _player.facing);
 
             // shooting
 
@@ -201,6 +172,7 @@ namespace LDJTopDownShooter {
             EnemiesManager.render(_sprite_batch);
             Shotgun.render(_sprite_batch);
             Scythe.render(_sprite_batch);
+            Laser.render(_sprite_batch);
 
             _sprite_batch.DrawString(
                 _arial10,
