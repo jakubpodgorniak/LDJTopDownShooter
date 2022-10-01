@@ -25,6 +25,7 @@ public class Player
 
     public Vector2 position;
     public Vector2 facing = Vector2.UnitX;
+    public bool is_dead = false;
 
     public float get_rotation() => CharacterHelper.facing_2_rotation(facing);
 
@@ -61,10 +62,7 @@ public class Player
             move.Normalize();
             Vector2 new_position = position + (move * Game.delta_time * MOVEMENT_SPEED);
 
-            new_position.X = Math.Clamp(new_position.X, World.MIN_X, World.MAX_X);
-            new_position.Y = Math.Clamp(new_position.Y, World.MIN_Y, World.MAX_Y);
-
-            position = new_position;
+            position = World.clamp_to_boundries(new_position);
         }
 
         // movement
@@ -99,6 +97,9 @@ public static class EnemiesManager {
     private static Enemy[] enemies = new Enemy[MAX_ENEMIES_COUNT];
     private static int next_enemy_id = 0;
 
+    private static List<Enemy> enemies_going_in = new List<Enemy>(MAX_ENEMIES_COUNT);
+    private static List<Enemy> fighting_enemies = new List<Enemy>(MAX_ENEMIES_COUNT);
+
     public const int SPAWNERS_COUNT = 9;
     private static EnemySpawner[] spawners = new EnemySpawner[SPAWNERS_COUNT];
 
@@ -126,7 +127,7 @@ public static class EnemiesManager {
 
         for (int i = 0; i < enemies.Length; i++) {
             enemies[i] = new() {
-                is_active = false
+                state = EnemyState.None
             };
         }
 
@@ -185,6 +186,15 @@ public static class EnemiesManager {
         _circle_texture.Dispose();
     }
 
+    public static void reset() {
+        foreach (var enemy in enemies) {
+            enemy.state = EnemyState.None;
+        }
+        enemies_going_in.Clear();
+        fighting_enemies.Clear();
+        next_enemy_id = 0;
+    }
+
     public static void spawn_random_enemy() {
         if (next_enemy_id == MAX_ENEMIES_COUNT) {
             return;
@@ -196,9 +206,9 @@ public static class EnemiesManager {
 
         enemy.position = new Vector2(spawner.position.X, spawner.position.Y);
         enemy.facing = spawner.direction;
-        enemy.movement_speed = 1 + Game.randomf();
+        enemy.movement_speed = 0.5f + Game.randomf();
         enemy.rotation_speed = 3f;
-        enemy.is_active = true;
+        enemy.state = EnemyState.GoesIn;
         enemy.collider = new CircleCollider {
             position = enemy.position,
             radius = 0.25f
@@ -216,6 +226,9 @@ public static class EnemiesManager {
 
     public static void update(Player player) {
         const float OUT_OF_BOUNDRIES_HEAT = 10f;
+
+        //var (player_tile_x, player_tile_y) = get_tile_position(player.position);
+        //tile_map[player_tile_y, player_tile_x].heat += 0.2f;
 
         for (int y = 0; y < TILE_MAP_HEIGHT; y++) {
             for (int x = 0; x < TILE_MAP_WIDTH; x++) {
@@ -240,13 +253,28 @@ public static class EnemiesManager {
             }
         }
 
-        for (int i = 0; i < next_enemy_id; i++) {
-            var enemy = enemies[i];
+        enemies_going_in.Clear();
+        fighting_enemies.Clear();
 
-            if (!enemy.is_active) {
-                continue;
+        foreach (var enemy in enemies) {
+            if (enemy.state == EnemyState.GoesIn) {
+                enemies_going_in.Add(enemy);
+            } else if (enemy.state == EnemyState.FightsJunky) {
+                fighting_enemies.Add(enemy);
             }
+        }
 
+        foreach (var enemy in enemies_going_in) {
+            Vector2 move = enemy.facing * Game.delta_time * enemy.movement_speed;
+            enemy.position += move;
+            enemy.collider.position = enemy.position;
+
+            if (World.is_position_in_boundries(enemy.position)) {
+                enemy.state = EnemyState.FightsJunky;
+            }
+        }
+
+        foreach (var enemy in fighting_enemies) {
             var (tile_x, tile_y) = get_tile_position(enemy.position);
 
             Vector2 towards_player_dir = player.position - enemy.collider.position;
@@ -260,14 +288,19 @@ public static class EnemiesManager {
             Vector2 move_dir = towards_player_dir + guide;
             Vector2 move = enemy.movement_speed * Game.delta_time * move_dir;
 
-            enemy.position += move;
-            enemy.collider.position = enemy.position;
+            Vector2 new_position = World.clamp_to_boundries(enemy.position + move);
 
+            enemy.position = new_position;
+            enemy.collider.position = enemy.position;
 
             Vector2 move_direction = move;
             move_direction.Normalize();     // new facing
 
             enemy.facing = Vector2.Lerp(enemy.facing, move_direction, enemy.rotation_speed * Game.delta_time);
+
+            if (Vector2.DistanceSquared(player.position, enemy.position) < 0.1f) {
+                player.is_dead = true;
+            }
         }
 
         for (int y = 0; y < TILE_MAP_HEIGHT; y++) {
@@ -279,7 +312,7 @@ public static class EnemiesManager {
         for (int i = 0; i < next_enemy_id; i++) {
             var enemy = enemies[i];
 
-            if (!enemy.is_active) {
+            if (enemy.state == EnemyState.None) {
                 continue;
             }
 
@@ -289,61 +322,61 @@ public static class EnemiesManager {
         }
     }
 
-    public static void render(SpriteBatch sprite_batch, bool render_debug_data = false) {
-        for (int i = 0; i < next_enemy_id; i++) {
-            var enemy = enemies[i];
-
-            if (enemy.is_active) {
-
-                var (x, y) = World.get_screen_position(enemy.collider.position);
-                sprite_batch.Draw(
-                    _shadow_texture,
-                    new Rectangle(x - 32, y - 32, 64, 64),
-                    Color.White);
-            }
+    public static void render_enemies_going_in(SpriteBatch sprite_batch, bool render_debug_data = false) {
+        foreach (var enemy in enemies_going_in) {
+            render_enemy_shadow(sprite_batch, enemy);
         }
 
-        for (int i = 0; i < next_enemy_id; i++) {
-            var enemy = enemies[i];
+        foreach (var enemy in enemies_going_in) {
+            render_enemy(sprite_batch, enemy, render_debug_data);
+        }
+    }
 
-            if (enemy.is_active) {
+    public static void render_fighting_enemies(SpriteBatch sprite_batch, bool render_debug_data = false) {
+        foreach (var enemy in fighting_enemies) {
+            render_enemy_shadow(sprite_batch, enemy);
+        }
 
-                var (x, y) = World.get_screen_position(enemy.collider.position);
-                float rotation = CharacterHelper.facing_2_rotation(enemy.facing);
-                //sprite_batch.Draw(
-                //    _enemy_texture,
-                //    new Rectangle(x - 32, y - 32, 64, 64),
-                //    null,
-                //    Color.White,
-                //    rotation,
-                //    new Vector2(32, 32),
-                //    SpriteEffects.None,
-                //    0);
-                sprite_batch.Draw(
-                    _enemy_texture,
-                    new Rectangle(x, y, 48, 48),
-                    null,
-                    Color.White,
-                    rotation,
-                    new Vector2(24, 24),
-                    SpriteEffects.None,
-                    0);
+        foreach (var enemy in fighting_enemies) {
+           render_enemy(sprite_batch, enemy, render_debug_data);
+        }
+    }
 
-                if (render_debug_data) {
-                    sprite_batch.DrawString(
-                        _arial10,
-                        $"[{enemy.position.X:F2}, {enemy.position.Y:F2}] {rotation:F2}",
-                        new Vector2(x, y),
-                        Color.Black);
+    private static void render_enemy_shadow(SpriteBatch sprite_batch, Enemy enemy) {
+        var (x, y) = World.get_screen_position(enemy.collider.position);
+        sprite_batch.Draw(
+            _shadow_texture,
+            new Rectangle(x - 32, y - 32, 64, 64),
+            Color.White);
+    }
 
-                    int radius = (int)Math.Floor(enemy.collider.radius * World.PIXELS_PER_UNIT);
-                    int collider_size = 2 * radius;
-                    sprite_batch.Draw(
-                        _circle_texture,
-                        new Rectangle(x - radius, y - radius, collider_size, collider_size),
-                        Color.LightGreen);
-                }
-            }
+    private static void render_enemy(SpriteBatch sprite_batch, Enemy enemy, bool render_debug_data = false) {
+        var (x, y) = World.get_screen_position(enemy.collider.position);
+        float rotation = CharacterHelper.facing_2_rotation(enemy.facing);
+
+        sprite_batch.Draw(
+            _enemy_texture,
+            new Rectangle(x, y, 48, 48),
+            null,
+            Color.White,
+            rotation,
+            new Vector2(24, 24),
+            SpriteEffects.None,
+            0);
+
+        if (render_debug_data) {
+            sprite_batch.DrawString(
+                _arial10,
+                $"[{enemy.position.X:F2}, {enemy.position.Y:F2}] {rotation:F2}",
+                new Vector2(x, y),
+                Color.Black);
+
+            int radius = (int)Math.Floor(enemy.collider.radius * World.PIXELS_PER_UNIT);
+            int collider_size = 2 * radius;
+            sprite_batch.Draw(
+                _circle_texture,
+                new Rectangle(x - radius, y - radius, collider_size, collider_size),
+                Color.LightGreen);
         }
     }
 
@@ -388,7 +421,7 @@ public static class EnemiesManager {
 
         if (enemy.health <= 0) {
             Highscore.gain_score(1);
-            enemy.is_active = false;
+            enemy.state = EnemyState.None;
         }
     }
 }
@@ -474,7 +507,7 @@ public static class Shotgun {
 
             // detect collision with enemies
             foreach (var enemy in EnemiesManager.get_enemies()) {
-                if (!enemy.is_active) {
+                if (enemy.state == EnemyState.None) {
                     continue;
                 }
 
@@ -597,7 +630,7 @@ public static class Scythe {
             }
 
             foreach (var enemy in EnemiesManager.get_enemies()) {
-                if (!enemy.is_active) {
+                if (enemy.state == EnemyState.None) {
                     continue;
                 }
 
@@ -665,7 +698,7 @@ public static class Laser {
         last_shoot_end = end;
 
         foreach (var enemy in EnemiesManager.get_enemies()) {
-            if (!enemy.is_active) {
+            if (enemy.state == EnemyState.None) {
                 continue;
             }
 

@@ -6,8 +6,17 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 
 namespace LDJTopDownShooter {
+
+    public enum GameState {
+        Stopped,
+        Running
+    }
+
+
     public class Game : Microsoft.Xna.Framework.Game
     {
+        private static GameState State  = GameState.Stopped;
+
         private static Dictionary<WeaponType, string> weapons_names = new Dictionary<WeaponType, string> {
             [WeaponType.Shotgun] = "Shotgun",
             [WeaponType.Scythe] = "Scythe",
@@ -113,20 +122,42 @@ namespace LDJTopDownShooter {
 
         protected override void Update(GameTime game_time)
         {
+            CustomInput.update(Keyboard.GetState(), Mouse.GetState());
+            delta_time = (float)game_time.ElapsedGameTime.TotalSeconds;
+
+            if (Keyboard.GetState().IsKeyDown(Keys.Escape))
+                Exit();
+
+            if (State == GameState.Stopped) {
+                UpdateStoppedGame(game_time);
+            } else {
+                UpdateRunningGame(game_time);
+            }
+
+            base.Update(game_time);
+        }
+
+        bool were_keys_pressed = false;
+
+        private void UpdateStoppedGame(GameTime game_time) {
+            if (!were_keys_pressed && (
+                Keyboard.GetState().GetPressedKeyCount() > 0
+                || CustomInput.is_mouse_button_down(MouseButton.Left)
+                || CustomInput.is_mouse_button_down(MouseButton.Right)
+                || CustomInput.is_mouse_button_down(MouseButton.Middle))) {
+                
+                _player.is_dead = false;
+                counter_start_seconds = game_time.ElapsedGameTime.TotalSeconds;
+                State = GameState.Running;
+            }
+
+            were_keys_pressed = Keyboard.GetState().GetPressedKeyCount() > 0;
+        }
+
+        private void UpdateRunningGame(GameTime game_time) {
             double total_seconds = game_time.TotalGameTime.TotalSeconds;
             double time_till_last_ten_seconds = (total_seconds - counter_start_seconds);
             ten_seconds_progress = time_till_last_ten_seconds * TEN_SECONDS_INVERSE;
-
-            CustomInput.update(
-                Keyboard.GetState(),
-                Mouse.GetState());
-
-            delta_time = (float)game_time.ElapsedGameTime.TotalSeconds;
-
-            var keyboard = Keyboard.GetState();
-
-            if (keyboard.IsKeyDown(Keys.Escape))
-                Exit();
 
             if (time_till_last_ten_seconds > TEN_SECONDS) {
                 // TEN SECONDS HAVE PASSED
@@ -140,6 +171,13 @@ namespace LDJTopDownShooter {
 
             _player.update();
             EnemiesManager.update(_player);
+
+            if (_player.is_dead) {              // finish game
+                were_keys_pressed = Keyboard.GetState().GetPressedKeyCount() > 0;
+                EnemiesManager.reset();
+                State = GameState.Stopped;
+                return;
+            }
 
             // enemies spawn
             double current_game_time = game_time.TotalGameTime.TotalSeconds;
@@ -193,10 +231,6 @@ namespace LDJTopDownShooter {
             if (CustomInput.is_key_down(Keys.P)) {
                 render_enemies_debug_data = !render_enemies_debug_data;
             }
-
-            // other
-
-            base.Update(game_time);
         }
 
         private void randomize_weapon() {
@@ -226,7 +260,7 @@ namespace LDJTopDownShooter {
         }
 
         private static double last_spawn_time;
-        private static double spawn_every = 0.25;
+        private static double spawn_every = 0.25f;
 
         protected override void Draw(GameTime gameTime)
         {
@@ -235,6 +269,7 @@ namespace LDJTopDownShooter {
 
             _sprite_batch.Begin(blendState: BlendState.AlphaBlend);
 
+            // floor
             _sprite_batch.Draw(
                 _map_texture,
                 new Rectangle(0, 0, 1280, 720),
@@ -254,23 +289,26 @@ namespace LDJTopDownShooter {
             
             _sprite_batch.DrawString(_arial10, rotation.ToString("F2", CultureInfo.InvariantCulture), new Vector2(x, y), Color.Black);
 
-            EnemiesManager.render(_sprite_batch, render_enemies_debug_data);
+            EnemiesManager.render_enemies_going_in(_sprite_batch, render_enemies_debug_data);
             Shotgun.render(_sprite_batch);
             Scythe.render(_sprite_batch);
             Laser.render(_sprite_batch);
 
+            // walls and doors
             _sprite_batch.Draw(
                 _map_texture,
                 new Rectangle(0, 0, 1280, 720),
                 new Rectangle(0, 0, 1280, 720),
                 Color.White);
 
+            EnemiesManager.render_fighting_enemies(_sprite_batch, render_enemies_debug_data);
+
             if (render_enemies_debug_data) {
                 EnemiesManager.render_heat_map(_sprite_batch);
                 EnemiesManager.render_spawners(_sprite_batch);
             }
 
-            World.render(_sprite_batch);
+            //World.render(_sprite_batch);
 
             _sprite_batch.End();
 
@@ -278,40 +316,42 @@ namespace LDJTopDownShooter {
             GraphicsDevice.Clear(Color.Transparent);
             _sprite_batch.Begin(blendState: BlendState.AlphaBlend);
 
-            // weapon icon
-            _sprite_batch.Draw(_ui_texture, new Rectangle(1160, 0, 128, 128), new Rectangle(256, 0, 128, 128), Color.White);
+            if (State == GameState.Running) {
+                // weapon icon
+                _sprite_batch.Draw(_ui_texture, new Rectangle(1160, 0, 128, 128), new Rectangle(256, 0, 128, 128), Color.White);
 
-            // weapon name
-            _sprite_batch.DrawString(
-                 _arial10,
-                 weapons_names[_current_weapon],
-                 new Vector2(1200, 48),
-                 Color.White);
+                // weapon name
+                _sprite_batch.DrawString(
+                     _arial10,
+                     weapons_names[_current_weapon],
+                     new Vector2(1200, 48),
+                     Color.White);
 
-            // ten seconds progres bar background
-            var progress_bar_segment_src = new Rectangle(256, 128, 128, 64);
-            _sprite_batch.Draw(_ui_texture, new Rectangle(1160, 128, 128, 64), progress_bar_segment_src, Color.White);
-            _sprite_batch.Draw(_ui_texture, new Rectangle(1160, 192, 128, 64), progress_bar_segment_src, Color.White);
-            _sprite_batch.Draw(_ui_texture, new Rectangle(1160, 256, 128, 64), progress_bar_segment_src, Color.White);
-            _sprite_batch.Draw(_ui_texture, new Rectangle(1160, 320, 128, 64), progress_bar_segment_src, Color.White);
-            _sprite_batch.Draw(_ui_texture, new Rectangle(1160, 384, 128, 64), progress_bar_segment_src, Color.White);
-            _sprite_batch.Draw(_ui_texture, new Rectangle(1160, 448, 128, 64), progress_bar_segment_src, Color.White);
-            _sprite_batch.Draw(_ui_texture, new Rectangle(1160, 512, 128, 64), progress_bar_segment_src, Color.White);
-            _sprite_batch.Draw(_ui_texture, new Rectangle(1160, 576, 128, 64), progress_bar_segment_src, Color.White);
+                // ten seconds progres bar background
+                var progress_bar_segment_src = new Rectangle(256, 128, 128, 64);
+                _sprite_batch.Draw(_ui_texture, new Rectangle(1160, 128, 128, 64), progress_bar_segment_src, Color.White);
+                _sprite_batch.Draw(_ui_texture, new Rectangle(1160, 192, 128, 64), progress_bar_segment_src, Color.White);
+                _sprite_batch.Draw(_ui_texture, new Rectangle(1160, 256, 128, 64), progress_bar_segment_src, Color.White);
+                _sprite_batch.Draw(_ui_texture, new Rectangle(1160, 320, 128, 64), progress_bar_segment_src, Color.White);
+                _sprite_batch.Draw(_ui_texture, new Rectangle(1160, 384, 128, 64), progress_bar_segment_src, Color.White);
+                _sprite_batch.Draw(_ui_texture, new Rectangle(1160, 448, 128, 64), progress_bar_segment_src, Color.White);
+                _sprite_batch.Draw(_ui_texture, new Rectangle(1160, 512, 128, 64), progress_bar_segment_src, Color.White);
+                _sprite_batch.Draw(_ui_texture, new Rectangle(1160, 576, 128, 64), progress_bar_segment_src, Color.White);
 
-            // question mark
-            _sprite_batch.Draw(_ui_texture, new Rectangle(1160, 600, 128, 128), new Rectangle(128, 0, 128, 128), Color.White);
+                // question mark
+                _sprite_batch.Draw(_ui_texture, new Rectangle(1160, 600, 128, 128), new Rectangle(128, 0, 128, 128), Color.White);
 
-            // ten seconds progress bar
-            int PROGRESS_BAR_MAX_HEIGHT = 516;
-            int progress_bar_height = (int)Math.Floor(ten_seconds_progress * PROGRESS_BAR_MAX_HEIGHT);
-            _sprite_batch.Draw(
-                _pixel_texture,
-                new Rectangle(1221, 107, 8, progress_bar_height),
-                new Color(0.631f, 0.804f, 0.98f, 1.0f));
+                // ten seconds progress bar
+                int PROGRESS_BAR_MAX_HEIGHT = 516;
+                int progress_bar_height = (int)Math.Floor(ten_seconds_progress * PROGRESS_BAR_MAX_HEIGHT);
+                _sprite_batch.Draw(
+                    _pixel_texture,
+                    new Rectangle(1221, 107, 8, progress_bar_height),
+                    new Color(0.631f, 0.804f, 0.98f, 1.0f));
 
-            // score
-            Highscore.render(_sprite_batch, _ui_texture, _rajdhani28);
+                // score
+                Highscore.render(_sprite_batch, _ui_texture, _rajdhani28);
+            }
 
             _sprite_batch.End();
 

@@ -9,7 +9,7 @@ public static class World {
     public const float MIN_X = 0.75f;
     public const float MAX_X = 8.75f;
     public const float MIN_Y = 0.5f;
-    public const float MAX_Y = 5.25f;
+    public const float MAX_Y = 5.15f;
 
     private static Texture2D _pixel_texture;
 
@@ -47,6 +47,13 @@ public static class World {
     public static bool is_position_in_boundries(Vector2 position) {
         return position.X >= MIN_X && position.X <= MAX_X
             && position.Y >= MIN_Y && position.Y <= MAX_Y;
+    }
+
+    public static Vector2 clamp_to_boundries(Vector2 position) {
+        var x = Math.Clamp(position.X, MIN_X, MAX_X);
+        var y = Math.Clamp(position.Y, MIN_Y, MAX_Y);
+
+        return new Vector2(x, y);
     }
 
     public static void render(SpriteBatch sprite_batch) {
