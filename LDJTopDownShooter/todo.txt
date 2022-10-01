@@ -1,6 +1,6 @@
 ﻿1. make movement based on velocity
 2. make player rotation follow cursor
-
+3. limit the shooting speed of shotgun
 
 =============================================================================
 
