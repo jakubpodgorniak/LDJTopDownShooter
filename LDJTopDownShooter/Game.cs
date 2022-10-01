@@ -41,7 +41,7 @@ namespace LDJTopDownShooter {
         {
             base.Initialize();
 
-            _player = new Player();
+            _player = new Player() { position = new Vector2 (5, 4) };
             _current_weapon = WeaponType.Shotgun;
         }
 
@@ -52,7 +52,7 @@ namespace LDJTopDownShooter {
             _character_texture = Content.Load<Texture2D>("player");
 
             World.load_content(GraphicsDevice);
-            EnemiesManager.load_content(Content);
+            EnemiesManager.load_content(GraphicsDevice, Content);
             Shotgun.load_content(Content);
             Scythe.load_content(GraphicsDevice);
             Laser.load_content(GraphicsDevice);
@@ -84,9 +84,8 @@ namespace LDJTopDownShooter {
             if (keyboard.IsKeyDown(Keys.Escape))
                 Exit();
 
-            EnemiesManager.update();
-
             _player.update();
+            EnemiesManager.update(_player);
 
             // enemies spawn
             double current_game_time = game_time.TotalGameTime.TotalSeconds;
@@ -146,7 +145,7 @@ namespace LDJTopDownShooter {
         }
 
         private static double last_spawn_time;
-        private static double spawn_every = 1.0;
+        private static double spawn_every = 0.25;
 
         protected override void Draw(GameTime gameTime)
         {
@@ -173,6 +172,8 @@ namespace LDJTopDownShooter {
             Shotgun.render(_sprite_batch);
             Scythe.render(_sprite_batch);
             Laser.render(_sprite_batch);
+
+            EnemiesManager.render_heat_map(_sprite_batch);
 
             _sprite_batch.DrawString(
                 _arial10,

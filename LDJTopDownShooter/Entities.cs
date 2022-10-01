@@ -59,7 +59,12 @@ public class Player
 
         if (moved) {
             move.Normalize();
-            position += (move * Game.delta_time * MOVEMENT_SPEED);
+            Vector2 new_position = position + (move * Game.delta_time * MOVEMENT_SPEED);
+
+            new_position.X = Math.Clamp(new_position.X, World.MIN_X, World.MAX_X);
+            new_position.Y = Math.Clamp(new_position.Y, World.MIN_Y, World.MAX_Y);
+
+            position = new_position;
         }
 
         // movement
@@ -78,27 +83,59 @@ public class Player
     }
 }
 
+public struct Tile {
+    public float heat;
+    public Vector2 guide_direction;
+}
+
 public static class EnemiesManager {
     public const int MAX_ENEMIES_COUNT = 300;
 
     private static Enemy[] enemies = new Enemy[MAX_ENEMIES_COUNT];
     private static int next_enemy_id = 0;
+
+    public const int TILE_MAP_WIDTH = 44;
+    public const int TILE_MAP_HEIGHT = 36;
+    public const float TILE_MAP_TILE_SIZE = 0.25f;
+    public static Tile[,] tile_map = new Tile[TILE_MAP_HEIGHT, TILE_MAP_WIDTH];
     
+    private static Texture2D _pixel_texture;
     private static Texture2D _enemy_texture;
     private static Texture2D _circle_texture;
     private static SpriteFont _arial10;
 
+    private static readonly Vector2 right_up_unit_vec2 = new Vector2(1, -1);
+    private static readonly Vector2 right_down_unit_vec2 = new Vector2(1, 1);
+    private static readonly Vector2 left_up_unit_vec2 = new Vector2(-1, -1);
+    private static readonly Vector2 left_down_unit_vec2 = new Vector2(-1, 1);
+
     static EnemiesManager() {
+        right_up_unit_vec2.Normalize();
+        right_down_unit_vec2.Normalize();
+        left_up_unit_vec2.Normalize();
+        left_down_unit_vec2.Normalize();
+
         for (int i = 0; i < enemies.Length; i++) {
             enemies[i] = new() {
                 is_active = false
             };
         }
+
+        for (int y = 0; y < TILE_MAP_HEIGHT; y++) {
+            for (int x = 0; x < TILE_MAP_WIDTH; x++) {
+                tile_map[y, x] = new Tile {
+                    heat = 0f,
+                    guide_direction = Vector2.Zero
+                };
+            }
+        }
     }
 
     public static Enemy[] get_enemies() => enemies;
 
-    public static void load_content(ContentManager content) {
+    public static void load_content(GraphicsDevice graphics, ContentManager content) {
+        _pixel_texture = new Texture2D(graphics, 1, 1);
+        _pixel_texture.SetData(new[] { Color.White });
         _enemy_texture = content.Load<Texture2D>("enemy");
         _arial10 = content.Load<SpriteFont>("fonts/arial10");
         _circle_texture = content.Load<Texture2D>("circle");
@@ -107,6 +144,8 @@ public static class EnemiesManager {
     public static void dispose() {
      // _arial10.Dispose(); ??
         _enemy_texture.Dispose();
+        _pixel_texture.Dispose();
+        _circle_texture.Dispose();
     }
 
     public static void spawn_random_enemy() {
@@ -123,7 +162,7 @@ public static class EnemiesManager {
         enemy.position = new Vector2(x, y);
         enemy.facing = Vector2.UnitX;
         enemy.movement_speed = 1 + Game.randomf();
-        enemy.rotation_speed = 5f;
+        enemy.rotation_speed = 3f;
         enemy.is_active = true;
         enemy.collider = new CircleCollider {
             position = enemy.position,
@@ -131,11 +170,82 @@ public static class EnemiesManager {
         };
     }
 
-    public static void update() {
+    private static (int tile_x, int tile_y) get_tile_position(Vector2 position) {
+        int tile_map_x = (int)MathF.Floor(position.X / TILE_MAP_TILE_SIZE);
+        tile_map_x = Math.Clamp(tile_map_x, 0, TILE_MAP_WIDTH - 1);
+        int tile_map_y = (int)Math.Floor(position.Y / TILE_MAP_TILE_SIZE);
+        tile_map_y = Math.Clamp(tile_map_y, 0, TILE_MAP_HEIGHT - 1);
+
+        return (tile_map_x, tile_map_y);
+    }
+
+    public static void update(Player player) {
+        const float OUT_OF_BOUNDRIES_HEAT = 10f;
+
+        for (int y = 0; y < TILE_MAP_HEIGHT; y++) {
+            for (int x = 0; x < TILE_MAP_WIDTH; x++) {
+                float top_heat = y == 0 ? OUT_OF_BOUNDRIES_HEAT : tile_map[y - 1, x].heat;
+                float right_heat = x == (TILE_MAP_WIDTH - 1) ? OUT_OF_BOUNDRIES_HEAT : tile_map[y, x + 1].heat;
+                float bottom_heat = y == (TILE_MAP_HEIGHT - 1) ? OUT_OF_BOUNDRIES_HEAT : tile_map[y + 1, x].heat;
+                float left_heat = x == 0 ? OUT_OF_BOUNDRIES_HEAT : tile_map[y, x - 1].heat;
+
+                float top_left_heat = (x == 0 || y == 0) ? OUT_OF_BOUNDRIES_HEAT : tile_map[y - 1, x - 1].heat;
+                float top_right_heat = (x == (TILE_MAP_WIDTH - 1) || y == 0) ? OUT_OF_BOUNDRIES_HEAT : tile_map[y - 1, x + 1].heat;
+                float bottom_right_heat = (x == (TILE_MAP_WIDTH - 1) || (y == TILE_MAP_HEIGHT - 1)) ? OUT_OF_BOUNDRIES_HEAT : tile_map[y + 1, x + 1].heat;
+                float bottom_left_heat = (x == 0 || (y == TILE_MAP_HEIGHT - 1)) ? OUT_OF_BOUNDRIES_HEAT : tile_map[y + 1, x - 1].heat;
+
+                tile_map[y, x].guide_direction = (Vector2.UnitY * top_heat)
+                    + (Vector2.UnitX * (-1) * right_heat)
+                    + (Vector2.UnitY * (-1) * bottom_heat)
+                    + (Vector2.UnitY * left_heat)
+                    + (right_down_unit_vec2 * top_left_heat)
+                    + (left_down_unit_vec2 * top_right_heat)
+                    + (right_up_unit_vec2 * bottom_left_heat)
+                    + (left_up_unit_vec2 * bottom_right_heat);
+            }
+        }
+
         for (int i = 0; i < next_enemy_id; i++) {
             var enemy = enemies[i];
 
+            if (!enemy.is_active) {
+                continue;
+            }
+
+            var (tile_x, tile_y) = get_tile_position(enemy.position);
+
+            Vector2 towards_player_dir = player.position - enemy.collider.position;
+            towards_player_dir.Normalize();
+            Vector2 guide = tile_map[tile_y, tile_x].guide_direction;
+
+            if (guide.LengthSquared() > 1e-6) {
+                guide.Normalize();
+            }
+
+            Vector2 move_dir = towards_player_dir + guide;
+            Vector2 move = enemy.movement_speed * Game.delta_time * move_dir;
+
+            enemy.position += move;
             enemy.collider.position = enemy.position;
+        }
+
+
+        for (int y = 0; y < TILE_MAP_HEIGHT; y++) {
+            for (int x = 0; x < TILE_MAP_WIDTH; x++) {
+                tile_map[y, x].heat = 0f;
+            }
+        }
+
+        for (int i = 0; i < next_enemy_id; i++) {
+            var enemy = enemies[i];
+
+            if (!enemy.is_active) {
+                continue;
+            }
+
+            var (tile_x, tile_y) = get_tile_position(enemy.position);
+
+            tile_map[tile_y, tile_x].heat += 1f;
         }
     }
 
@@ -174,6 +284,23 @@ public static class EnemiesManager {
                     new Rectangle(x - radius, y - radius, collider_size, collider_size),
                     Color.LightGreen);
                    
+            }
+        }
+    }
+
+    public static void render_heat_map(SpriteBatch sprite_batch) {
+        for (int y = 0; y < TILE_MAP_HEIGHT; y++) {
+            for (int x = 0; x < TILE_MAP_WIDTH; x++) {
+                float value = tile_map[y, x].heat;
+
+                int x_pos = x * 32;
+                int y_pos = y * 32;
+                int width = 32;
+                int height = 32;
+                float red = value * 0.1f;
+                float alpha = value * 0.1f * 0.75f;
+
+                sprite_batch.Draw(_pixel_texture, new Rectangle(x_pos, y_pos, width, height), new Color(red, 0, 0, alpha));
             }
         }
     }
@@ -505,7 +632,7 @@ public static class Laser {
 }
 
 public class Bullet { 
-    public static float SPEED = 5.0f;
+    public static float SPEED = 10.0f;
 
     public bool is_active;
     public PointCollider collider;
