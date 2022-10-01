@@ -6,10 +6,10 @@ namespace LDJTopDownShooter;
 
 public static class World {
     public const int PIXELS_PER_UNIT = 128;
-    public const float MIN_X = 0.25f;
-    public const float MAX_X = 9.75f;
-    public const float MIN_Y = 0.25f;
-    public const float MAX_Y = 5.375f;
+    public const float MIN_X = 0.75f;
+    public const float MAX_X = 8.75f;
+    public const float MIN_Y = 0.5f;
+    public const float MAX_Y = 5.25f;
 
     private static Texture2D _pixel_texture;
 

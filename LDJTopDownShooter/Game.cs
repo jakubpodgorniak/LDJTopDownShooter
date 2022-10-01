@@ -30,6 +30,7 @@ namespace LDJTopDownShooter {
         private Texture2D _character_texture;
         private Texture2D _ui_texture;
         private Texture2D _pixel_texture;
+        private Texture2D _map_texture;
         private Player _player;
         private WeaponType _current_weapon;
         private RenderTarget2D _map_render_target;
@@ -77,6 +78,7 @@ namespace LDJTopDownShooter {
             _rajdhani28 = Content.Load<SpriteFont>("fonts/Rajdhani28");
             _character_texture = Content.Load<Texture2D>("player");
             _ui_texture = Content.Load<Texture2D>("ui");
+            _map_texture = Content.Load<Texture2D>("map");
             _pixel_texture = new Texture2D(GraphicsDevice, 1, 1);
             _pixel_texture.SetData(new Color[] {Color.White});
 
@@ -225,7 +227,6 @@ namespace LDJTopDownShooter {
 
             _sprite_batch.Begin(blendState: BlendState.AlphaBlend);
 
-            World.render(_sprite_batch);
 
             var (x, y) = World.get_screen_position(_player.position);
             float rotation = _player.get_rotation();
@@ -245,6 +246,13 @@ namespace LDJTopDownShooter {
             Scythe.render(_sprite_batch);
             Laser.render(_sprite_batch);
             EnemiesManager.render_heat_map(_sprite_batch);
+
+            _sprite_batch.Draw(
+                _map_texture,
+                new Rectangle(0, 0, 1280, 720),
+                new Rectangle(0, 0, 1280, 720),
+                Color.White);
+            World.render(_sprite_batch);
 
             _sprite_batch.End();
 
