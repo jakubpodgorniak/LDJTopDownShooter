@@ -26,6 +26,7 @@ namespace LDJTopDownShooter {
         private SpriteBatch _sprite_batch;
 
         private SpriteFont _arial10;
+        private SpriteFont _rajdhani28;
         private Texture2D _character_texture;
         private Texture2D _ui_texture;
         private Texture2D _pixel_texture;
@@ -73,6 +74,7 @@ namespace LDJTopDownShooter {
 
             _sprite_batch = new SpriteBatch(GraphicsDevice);
             _arial10 = Content.Load<SpriteFont>("fonts/Arial10");
+            _rajdhani28 = Content.Load<SpriteFont>("fonts/Rajdhani28");
             _character_texture = Content.Load<Texture2D>("player");
             _ui_texture = Content.Load<Texture2D>("ui");
             _pixel_texture = new Texture2D(GraphicsDevice, 1, 1);
@@ -281,6 +283,9 @@ namespace LDJTopDownShooter {
                 _pixel_texture,
                 new Rectangle(1221, 107, 8, progress_bar_height),
                 new Color(0.631f, 0.804f, 0.98f, 1.0f));
+
+            // score
+            Highscore.render(_sprite_batch, _ui_texture, _rajdhani28);
 
             _sprite_batch.End();
 

@@ -56,6 +56,13 @@
 /processorParam:TextureFormat=Compressed
 /build:fonts/Arial10.spritefont
 
+#begin fonts/Rajdhani28.spritefont
+/importer:FontDescriptionImporter
+/processor:FontDescriptionProcessor
+/processorParam:PremultiplyAlpha=True
+/processorParam:TextureFormat=Compressed
+/build:fonts/Rajdhani28.spritefont
+
 #begin player.png
 /importer:TextureImporter
 /processor:TextureProcessor

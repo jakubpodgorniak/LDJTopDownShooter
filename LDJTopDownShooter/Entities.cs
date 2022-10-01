@@ -315,6 +315,7 @@ public static class EnemiesManager {
         enemy.health -= damage;
 
         if (enemy.health <= 0) {
+            Highscore.gain_score(1);
             enemy.is_active = false;
         }
     }
