@@ -109,6 +109,7 @@ namespace LDJTopDownShooter {
 
         bool enable_weapon_randomizer = false;
         //bool enable_weapon_randomizer = true;
+        bool render_enemies_debug_data = false;
 
         protected override void Update(GameTime game_time)
         {
@@ -188,6 +189,13 @@ namespace LDJTopDownShooter {
 
             // shooting
 
+            // other
+            if (CustomInput.is_key_down(Keys.P)) {
+                render_enemies_debug_data = !render_enemies_debug_data;
+            }
+
+            // other
+
             base.Update(game_time);
         }
 
@@ -223,10 +231,15 @@ namespace LDJTopDownShooter {
         protected override void Draw(GameTime gameTime)
         {
             GraphicsDevice.SetRenderTarget(_map_render_target);
-            GraphicsDevice.Clear(Color.Gray);
+            GraphicsDevice.Clear(Color.Black);
 
             _sprite_batch.Begin(blendState: BlendState.AlphaBlend);
 
+            _sprite_batch.Draw(
+                _map_texture,
+                new Rectangle(0, 0, 1280, 720),
+                new Rectangle(0, 720, 1280, 720),
+                Color.White);
 
             var (x, y) = World.get_screen_position(_player.position);
             float rotation = _player.get_rotation();
@@ -241,17 +254,22 @@ namespace LDJTopDownShooter {
             
             _sprite_batch.DrawString(_arial10, rotation.ToString("F2", CultureInfo.InvariantCulture), new Vector2(x, y), Color.Black);
 
-            EnemiesManager.render(_sprite_batch);
+            EnemiesManager.render(_sprite_batch, render_enemies_debug_data);
             Shotgun.render(_sprite_batch);
             Scythe.render(_sprite_batch);
             Laser.render(_sprite_batch);
-            EnemiesManager.render_heat_map(_sprite_batch);
 
             _sprite_batch.Draw(
                 _map_texture,
                 new Rectangle(0, 0, 1280, 720),
                 new Rectangle(0, 0, 1280, 720),
                 Color.White);
+
+            if (render_enemies_debug_data) {
+                EnemiesManager.render_heat_map(_sprite_batch);
+                EnemiesManager.render_spawners(_sprite_batch);
+            }
+
             World.render(_sprite_batch);
 
             _sprite_batch.End();

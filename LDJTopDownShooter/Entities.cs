@@ -21,7 +21,7 @@ public static class CharacterHelper {
 public class Player
 {
     public const float MOVEMENT_SPEED = 2.0f;
-    public const float ROTATION_SPEED = 5.0f;
+    public const float ROTATION_SPEED = 10.0f;
 
     public Vector2 position;
     public Vector2 facing = Vector2.UnitX;
@@ -76,15 +76,15 @@ public class Player
         new_facing.Normalize();
         facing = Vector2.Lerp(facing, new_facing, ROTATION_SPEED * Game.delta_time);
 
-        if (CustomInput.is_key_pressed(Keys.Q)) {
-            float rotation_angle = ROTATION_SPEED * Game.delta_time;
+        //if (CustomInput.is_key_pressed(Keys.Q)) {
+        //    float rotation_angle = ROTATION_SPEED * Game.delta_time;
 
-            facing = World.rotate_vector2d_by_angle(facing, rotation_angle);
-        } else if (CustomInput.is_key_pressed(Keys.E)) {
-            float rotation_angle = (-1f) * ROTATION_SPEED * Game.delta_time;
+        //    facing = World.rotate_vector2d_by_angle(facing, rotation_angle);
+        //} else if (CustomInput.is_key_pressed(Keys.E)) {
+        //    float rotation_angle = (-1f) * ROTATION_SPEED * Game.delta_time;
 
-            facing = World.rotate_vector2d_by_angle(facing, rotation_angle);
-        }
+        //    facing = World.rotate_vector2d_by_angle(facing, rotation_angle);
+        //}
         //rotation
     }
 }
@@ -96,9 +96,11 @@ public struct Tile {
 
 public static class EnemiesManager {
     public const int MAX_ENEMIES_COUNT = 300;
-
     private static Enemy[] enemies = new Enemy[MAX_ENEMIES_COUNT];
     private static int next_enemy_id = 0;
+
+    public const int SPAWNERS_COUNT = 9;
+    private static EnemySpawner[] spawners = new EnemySpawner[SPAWNERS_COUNT];
 
     public const int TILE_MAP_WIDTH = 44;
     public const int TILE_MAP_HEIGHT = 36;
@@ -108,6 +110,7 @@ public static class EnemiesManager {
     private static Texture2D _pixel_texture;
     private static Texture2D _enemy_texture;
     private static Texture2D _circle_texture;
+    private static Texture2D _shadow_texture;
     private static SpriteFont _arial10;
 
     private static readonly Vector2 right_up_unit_vec2 = new Vector2(1, -1);
@@ -135,6 +138,32 @@ public static class EnemiesManager {
                 };
             }
         }
+
+        // up 1
+        spawners[0] = new EnemySpawner { position = new Vector2(2.3f, 0.1f), direction = new Vector2(0f, 1f) };
+        // up 2
+        spawners[1] = new EnemySpawner { position = new Vector2(7.2f, 0.1f), direction = new Vector2(0f, 1f) };
+
+        // right 1
+        spawners[2] = new EnemySpawner { position = new Vector2(9.5f, 1.5f), direction = new Vector2(-1f, 0f) };
+
+        // right 2
+        spawners[3] = new EnemySpawner { position = new Vector2(9.5f, 4f), direction = new Vector2(-1f, 0f) };
+
+        // down 1
+        spawners[4] = new EnemySpawner { position = new Vector2(7.2f, 5.5f), direction = new Vector2(0f, -1f) };
+
+        // down 2
+        spawners[5] = new EnemySpawner { position = new Vector2(4.9f, 5.5f), direction = new Vector2(0f, -1f) };
+
+        // down 3
+        spawners[6] = new EnemySpawner { position = new Vector2(2.3f, 5.5f), direction = new Vector2(0f, -1f) };
+
+        // left 1
+        spawners[7] = new EnemySpawner { position = new Vector2(0.1f, 4f), direction = new Vector2(1f, 0f) };
+
+        // left 2
+        spawners[8] = new EnemySpawner { position = new Vector2(0.1f, 1.5f), direction = new Vector2(1f, 0f) };
     }
 
     public static Enemy[] get_enemies() => enemies;
@@ -143,6 +172,7 @@ public static class EnemiesManager {
         _pixel_texture = new Texture2D(graphics, 1, 1);
         _pixel_texture.SetData(new[] { Color.White });
         _enemy_texture = content.Load<Texture2D>("enemy");
+        _shadow_texture = content.Load<Texture2D>("shadow");
         _arial10 = content.Load<SpriteFont>("fonts/arial10");
         _circle_texture = content.Load<Texture2D>("circle");
     }
@@ -150,23 +180,22 @@ public static class EnemiesManager {
     public static void dispose() {
      // _arial10.Dispose(); ??
         _enemy_texture.Dispose();
+        _shadow_texture.Dispose();
         _pixel_texture.Dispose();
         _circle_texture.Dispose();
     }
 
     public static void spawn_random_enemy() {
-        float x = Game.randomf() * 5;
-        float y = Game.randomf() * 5;
-
         if (next_enemy_id == MAX_ENEMIES_COUNT) {
             return;
         }
 
+        var spawner = spawners[Game.random.Next(0, SPAWNERS_COUNT)];
         var enemy = enemies[next_enemy_id];
         next_enemy_id++;
 
-        enemy.position = new Vector2(x, y);
-        enemy.facing = Vector2.UnitX;
+        enemy.position = new Vector2(spawner.position.X, spawner.position.Y);
+        enemy.facing = spawner.direction;
         enemy.movement_speed = 1 + Game.randomf();
         enemy.rotation_speed = 3f;
         enemy.is_active = true;
@@ -233,8 +262,13 @@ public static class EnemiesManager {
 
             enemy.position += move;
             enemy.collider.position = enemy.position;
-        }
 
+
+            Vector2 move_direction = move;
+            move_direction.Normalize();     // new facing
+
+            enemy.facing = Vector2.Lerp(enemy.facing, move_direction, enemy.rotation_speed * Game.delta_time);
+        }
 
         for (int y = 0; y < TILE_MAP_HEIGHT; y++) {
             for (int x = 0; x < TILE_MAP_WIDTH; x++) {
@@ -255,7 +289,20 @@ public static class EnemiesManager {
         }
     }
 
-    public static void render(SpriteBatch sprite_batch) {
+    public static void render(SpriteBatch sprite_batch, bool render_debug_data = false) {
+        for (int i = 0; i < next_enemy_id; i++) {
+            var enemy = enemies[i];
+
+            if (enemy.is_active) {
+
+                var (x, y) = World.get_screen_position(enemy.collider.position);
+                sprite_batch.Draw(
+                    _shadow_texture,
+                    new Rectangle(x - 32, y - 32, 64, 64),
+                    Color.White);
+            }
+        }
+
         for (int i = 0; i < next_enemy_id; i++) {
             var enemy = enemies[i];
 
@@ -272,24 +319,30 @@ public static class EnemiesManager {
                 //    new Vector2(32, 32),
                 //    SpriteEffects.None,
                 //    0);
-
                 sprite_batch.Draw(
                     _enemy_texture,
-                    new Rectangle(x - 32, y - 32, 64, 64),
-                    Color.White);
-                sprite_batch.DrawString(
-                    _arial10,
-                    $"[{enemy.position.X:F2}, {enemy.position.Y:F2}] {rotation:F2}",
-                    new Vector2(x, y),
-                    Color.Black);
+                    new Rectangle(x, y, 48, 48),
+                    null,
+                    Color.White,
+                    rotation,
+                    new Vector2(24, 24),
+                    SpriteEffects.None,
+                    0);
 
-                int radius = (int)Math.Floor(enemy.collider.radius * World.PIXELS_PER_UNIT);
-                int collider_size = 2 * radius;
-                sprite_batch.Draw(
-                    _circle_texture,
-                    new Rectangle(x - radius, y - radius, collider_size, collider_size),
-                    Color.LightGreen);
-                   
+                if (render_debug_data) {
+                    sprite_batch.DrawString(
+                        _arial10,
+                        $"[{enemy.position.X:F2}, {enemy.position.Y:F2}] {rotation:F2}",
+                        new Vector2(x, y),
+                        Color.Black);
+
+                    int radius = (int)Math.Floor(enemy.collider.radius * World.PIXELS_PER_UNIT);
+                    int collider_size = 2 * radius;
+                    sprite_batch.Draw(
+                        _circle_texture,
+                        new Rectangle(x - radius, y - radius, collider_size, collider_size),
+                        Color.LightGreen);
+                }
             }
         }
     }
@@ -311,6 +364,25 @@ public static class EnemiesManager {
         }
     }
 
+    public static void render_spawners(SpriteBatch sprite_batch) {
+        foreach (var spawner in spawners) {
+            var (x, y) = World.get_screen_position(spawner.position);
+
+            sprite_batch.Draw(
+                _pixel_texture,
+                new Rectangle(x - 6, y - 6, 12, 12),
+                Color.Aqua);
+
+            var dir_indicator_pos = spawner.position + (0.2f * spawner.direction);
+            var (ind_x, ind_y) = World.get_screen_position(dir_indicator_pos);
+            
+            sprite_batch.Draw(
+                _pixel_texture,
+                new Rectangle(ind_x - 2, ind_y - 2, 4, 4),
+                Color.Green);
+        }
+    }
+
     public static void gain_damage(Enemy enemy, float damage) {
         enemy.health -= damage;
 
@@ -321,14 +393,25 @@ public static class EnemiesManager {
     }
 }
 
+public enum EnemyState {
+    None,
+    GoesIn,
+    FightsJunky
+}
+
 public class Enemy {
-    public bool is_active;
+    public EnemyState state;
     public float movement_speed;
     public float rotation_speed;
     public Vector2 position;
     public Vector2 facing;
     public CircleCollider collider;
     public float health = 1.0f;
+}
+
+public class EnemySpawner {
+    public Vector2 position;
+    public Vector2 direction;
 }
 
 public static class Shotgun {
