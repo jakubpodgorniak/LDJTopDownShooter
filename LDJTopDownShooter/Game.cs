@@ -40,6 +40,7 @@ namespace LDJTopDownShooter {
         private Texture2D _ui_texture;
         private Texture2D _pixel_texture;
         private Texture2D _map_texture;
+        private Texture2D _start_ui;
         private Player _player;
         private WeaponType _current_weapon;
         private RenderTarget2D _map_render_target;
@@ -61,7 +62,7 @@ namespace LDJTopDownShooter {
         {
             base.Initialize();
 
-            _player = new Player() { position = new Vector2 (5, 4) };
+            _player = new Player() { position = new Vector2 (5, 2.8125f) };
             _current_weapon = WeaponType.Shotgun;
         }
 
@@ -88,6 +89,7 @@ namespace LDJTopDownShooter {
             _character_texture = Content.Load<Texture2D>("player");
             _ui_texture = Content.Load<Texture2D>("ui");
             _map_texture = Content.Load<Texture2D>("map");
+            _start_ui = Content.Load<Texture2D>("start-ui");
             _pixel_texture = new Texture2D(GraphicsDevice, 1, 1);
             _pixel_texture.SetData(new Color[] {Color.White});
 
@@ -105,6 +107,7 @@ namespace LDJTopDownShooter {
             _character_texture.Dispose();
             _ui_texture.Dispose();
             _pixel_texture.Dispose();
+            _start_ui.Dispose();
 
             _map_render_target.Dispose();
             _ui_render_target.Dispose();
@@ -147,7 +150,9 @@ namespace LDJTopDownShooter {
                 || CustomInput.is_mouse_button_down(MouseButton.Middle))) {
                 
                 _player.is_dead = false;
-                counter_start_seconds = game_time.ElapsedGameTime.TotalSeconds;
+                Highscore.reset_score();
+                ten_seconds_progress = 0;
+                counter_start_seconds = game_time.TotalGameTime.TotalSeconds;
                 State = GameState.Running;
             }
 
@@ -175,6 +180,9 @@ namespace LDJTopDownShooter {
             if (_player.is_dead) {              // finish game
                 were_keys_pressed = Keyboard.GetState().GetPressedKeyCount() > 0;
                 EnemiesManager.reset();
+                Shotgun.reset();
+                Laser.turn_off();
+                _player.position = new Vector2(5, 2.8125f);
                 State = GameState.Stopped;
                 return;
             }
@@ -316,7 +324,14 @@ namespace LDJTopDownShooter {
             GraphicsDevice.Clear(Color.Transparent);
             _sprite_batch.Begin(blendState: BlendState.AlphaBlend);
 
-            if (State == GameState.Running) {
+            if (State == GameState.Stopped) {
+                _sprite_batch.Draw(_start_ui, new Rectangle(0 ,0, 1280, 720), new Rectangle(0, 0, 1280, 720), Color.White);
+
+                //if (Highscore.any_score) {
+                    Highscore.render_high_score(_sprite_batch, _pixel_texture, _rajdhani28);
+                //}
+
+            } else if (State == GameState.Running) {
                 // weapon icon
                 _sprite_batch.Draw(_ui_texture, new Rectangle(1160, 0, 128, 128), new Rectangle(256, 0, 128, 128), Color.White);
 

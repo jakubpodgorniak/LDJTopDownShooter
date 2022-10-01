@@ -530,6 +530,12 @@ public static class Shotgun {
         }
     }
 
+    public static void reset() {
+        foreach (var bullet in bullets) {
+            destroy_bullet(bullet);
+        }
+    }
+
     public static void destroy_bullet(Bullet bullet) {
         bullet.is_active = false;
     }

@@ -4,10 +4,12 @@ using Microsoft.Xna.Framework.Graphics;
 namespace LDJTopDownShooter {
     public static class Highscore {
 
+        public static bool any_score = false;
         public static int high_score = 0;
         public static int current_score = 0;
 
         public static void gain_score(int amount) {
+            any_score = true;
             current_score += amount;
 
             if (current_score > high_score) {
@@ -35,6 +37,31 @@ namespace LDJTopDownShooter {
                 font,
                 score,
                 new Vector2(x, y),
+                Color.White);
+        }
+
+        public static void render_high_score(SpriteBatch sprite_batch, Texture2D pixel_texture, SpriteFont font) {
+            sprite_batch.Draw(
+                pixel_texture,
+                new Rectangle(38, 513, 268, 168),
+                new Color(0, 0, 0, 0.81f));
+
+            sprite_batch.DrawString(
+                font,
+                $"Score: {current_score}",
+                new Vector2(48, 521),
+                Color.White);
+
+            sprite_batch.DrawString(
+                font,
+                $"Highscore: {high_score}",
+                new Vector2(48, 576),
+                Color.White);
+
+            sprite_batch.DrawString(
+                font,
+                $"Survived: 1m 43s",
+                new Vector2(48, 631),
                 Color.White);
         }
     }
