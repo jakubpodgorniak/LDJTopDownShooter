@@ -1,2 +1,29 @@
 ﻿1. make movement based on velocity
 2. make player rotation follow cursor
+
+
+=============================================================================
+
+-----
+1. movement
+	- moving top, right, down, left
+	- rotating
+	- way to limit map size
+	 	- if there is time make map bigger and scrollable
+2. swarm
+	- moving towards player
+	- should collision detection be used ? 
+	- different types? (probably not)
+3. lives? 
+	- insta death? 
+4. shotgun
+	- shots bunch of projectiles
+5. scythe
+	- kills enemies in front of player
+6. laser
+	- kills everything in straight line, rotation is slower with laser
+7. score counter
+8. custom cursor
+9. splash screen - takes directly to game
+10. game over screen - identical to splash screen but shows score
+11. high score mechanism
