@@ -25,7 +25,11 @@ public class Player
 
     public Vector2 position;
     public Vector2 facing = Vector2.UnitX;
-    public bool is_dead = false;
+    public bool immortal = false;
+
+    private bool is_dead = false;
+
+    public bool get_is_dead() => is_dead;
 
     public float get_rotation() => CharacterHelper.facing_2_rotation(facing);
 
@@ -85,6 +89,18 @@ public class Player
         //}
         //rotation
     }
+
+    public void kill() {
+        if (immortal) {
+            return;
+        }
+
+        is_dead = true;
+    }
+
+    public void revive() {
+        is_dead = false;
+    }
 }
 
 public struct Tile {
@@ -95,8 +111,8 @@ public struct Tile {
 public static class EnemiesManager {
     public const int MAX_ENEMIES_COUNT = 300;
     private static Enemy[] enemies = new Enemy[MAX_ENEMIES_COUNT];
-    private static int next_enemy_id = 0;
 
+    private static Queue<int> inactive_enemies_indexes = new Queue<int>();
     private static List<Enemy> enemies_going_in = new List<Enemy>(MAX_ENEMIES_COUNT);
     private static List<Enemy> fighting_enemies = new List<Enemy>(MAX_ENEMIES_COUNT);
 
@@ -127,8 +143,10 @@ public static class EnemiesManager {
 
         for (int i = 0; i < enemies.Length; i++) {
             enemies[i] = new() {
+                index = i,
                 state = EnemyState.None
             };
+            inactivate_enemy(enemies[i]);
         }
 
         for (int y = 0; y < TILE_MAP_HEIGHT; y++) {
@@ -169,6 +187,8 @@ public static class EnemiesManager {
 
     public static Enemy[] get_enemies() => enemies;
 
+    public static int get_enemies_left_to_spawn_number() => inactive_enemies_indexes.Count;
+
     public static void load_content(GraphicsDevice graphics, ContentManager content) {
         _pixel_texture = new Texture2D(graphics, 1, 1);
         _pixel_texture.SetData(new[] { Color.White });
@@ -188,21 +208,30 @@ public static class EnemiesManager {
 
     public static void reset() {
         foreach (var enemy in enemies) {
-            enemy.state = EnemyState.None;
+            inactivate_enemy(enemy);
         }
         enemies_going_in.Clear();
         fighting_enemies.Clear();
-        next_enemy_id = 0;
+        
+    }
+
+    private static void inactivate_enemy(Enemy enemy) {
+        if (enemy.state == EnemyState.Inactive) {
+            return;
+        }
+
+        enemy.state = EnemyState.Inactive;
+        inactive_enemies_indexes.Enqueue(enemy.index);
     }
 
     public static void spawn_random_enemy() {
-        if (next_enemy_id == MAX_ENEMIES_COUNT) {
+        if (inactive_enemies_indexes.Count == 0) {
             return;
         }
 
         var spawner = spawners[Game.random.Next(0, SPAWNERS_COUNT)];
-        var enemy = enemies[next_enemy_id];
-        next_enemy_id++;
+        var enemy_index = inactive_enemies_indexes.Dequeue();
+        var enemy = enemies[enemy_index];
 
         enemy.position = new Vector2(spawner.position.X, spawner.position.Y);
         enemy.facing = spawner.direction;
@@ -299,7 +328,7 @@ public static class EnemiesManager {
             enemy.facing = Vector2.Lerp(enemy.facing, move_direction, enemy.rotation_speed * Game.delta_time);
 
             if (Vector2.DistanceSquared(player.position, enemy.position) < 0.1f) {
-                player.is_dead = true;
+                player.kill();
             }
         }
 
@@ -309,15 +338,13 @@ public static class EnemiesManager {
             }
         }
 
-        for (int i = 0; i < next_enemy_id; i++) {
-            var enemy = enemies[i];
-
-            if (enemy.state == EnemyState.None) {
-                continue;
-            }
-
+        foreach (var enemy in enemies_going_in) {
             var (tile_x, tile_y) = get_tile_position(enemy.position);
+            tile_map[tile_y, tile_x].heat += 1f;
+        }
 
+        foreach (var enemy in fighting_enemies) {
+            var (tile_x, tile_y) = get_tile_position(enemy.position);
             tile_map[tile_y, tile_x].heat += 1f;
         }
     }
@@ -421,18 +448,20 @@ public static class EnemiesManager {
 
         if (enemy.health <= 0) {
             Highscore.gain_score(1);
-            enemy.state = EnemyState.None;
+            inactivate_enemy(enemy);
         }
     }
 }
 
 public enum EnemyState {
     None,
+    Inactive,
     GoesIn,
     FightsJunky
 }
 
 public class Enemy {
+    public int index;
     public EnemyState state;
     public float movement_speed;
     public float rotation_speed;
@@ -507,7 +536,7 @@ public static class Shotgun {
 
             // detect collision with enemies
             foreach (var enemy in EnemiesManager.get_enemies()) {
-                if (enemy.state == EnemyState.None) {
+                if (enemy.state == EnemyState.None || enemy.state == EnemyState.Inactive) {
                     continue;
                 }
 
@@ -636,7 +665,7 @@ public static class Scythe {
             }
 
             foreach (var enemy in EnemiesManager.get_enemies()) {
-                if (enemy.state == EnemyState.None) {
+                if (enemy.state == EnemyState.None || enemy.state == EnemyState.Inactive) {
                     continue;
                 }
 
@@ -704,7 +733,7 @@ public static class Laser {
         last_shoot_end = end;
 
         foreach (var enemy in EnemiesManager.get_enemies()) {
-            if (enemy.state == EnemyState.None) {
+            if (enemy.state == EnemyState.None || enemy.state == EnemyState.Inactive) {
                 continue;
             }
 

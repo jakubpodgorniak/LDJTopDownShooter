@@ -62,7 +62,7 @@ namespace LDJTopDownShooter {
         {
             base.Initialize();
 
-            _player = new Player() { position = new Vector2 (5, 2.8125f) };
+            _player = new Player() { position = new Vector2 (5, 2.8125f), immortal = true };
             _current_weapon = WeaponType.Shotgun;
         }
 
@@ -149,7 +149,7 @@ namespace LDJTopDownShooter {
                 || CustomInput.is_mouse_button_down(MouseButton.Right)
                 || CustomInput.is_mouse_button_down(MouseButton.Middle))) {
                 
-                _player.is_dead = false;
+                _player.revive();
                 Highscore.reset_score();
                 ten_seconds_progress = 0;
                 counter_start_seconds = game_time.TotalGameTime.TotalSeconds;
@@ -177,7 +177,7 @@ namespace LDJTopDownShooter {
             _player.update();
             EnemiesManager.update(_player);
 
-            if (_player.is_dead) {              // finish game
+            if (_player.get_is_dead()) {              // finish game
                 were_keys_pressed = Keyboard.GetState().GetPressedKeyCount() > 0;
                 EnemiesManager.reset();
                 Shotgun.reset();
@@ -268,7 +268,7 @@ namespace LDJTopDownShooter {
         }
 
         private static double last_spawn_time;
-        private static double spawn_every = 0.25f;
+        private static double spawn_every = 0.05f;
 
         protected override void Draw(GameTime gameTime)
         {
@@ -366,6 +366,15 @@ namespace LDJTopDownShooter {
 
                 // score
                 Highscore.render(_sprite_batch, _ui_texture, _rajdhani28);
+
+                // enemies left
+                if (render_enemies_debug_data) {
+                    _sprite_batch.DrawString(
+                        _arial10,
+                        EnemiesManager.get_enemies_left_to_spawn_number().ToString(),
+                        new Vector2(25, 150),
+                        Color.Black);
+                }
             }
 
             _sprite_batch.End();
