@@ -1,7 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Audio;
+using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 
@@ -12,6 +13,53 @@ namespace LDJTopDownShooter {
         Running
     }
 
+    public class Sound {
+        public SoundEffect sound_effect;
+        public float volume;
+
+        public void Play() {
+            sound_effect.Play(volume, 0, 0);
+        }
+    }
+
+    public static class Sounds {
+        public static Sound SHOTGUN;
+        public static Sound SCYTHE;
+        public static Sound LASER;
+        public static Sound DESTORY;
+        public static Sound TEN_SECONDS;
+
+        public static void load(ContentManager content) {
+            SHOTGUN = new() {
+                sound_effect = content.Load<SoundEffect>("sounds/shotgun"),
+                volume = 0.5f
+            };
+            SCYTHE = new() {
+                sound_effect = content.Load<SoundEffect>("sounds/scythe"),
+                volume = 0.5f
+            };
+            LASER = new() {
+                sound_effect = content.Load<SoundEffect>("sounds/laser"),
+                volume = 0.5f
+            };
+            DESTORY = new() {
+                sound_effect = content.Load<SoundEffect>("sounds/destroy"),
+                volume = 0.5f
+            };
+            TEN_SECONDS = new() {
+                sound_effect = content.Load<SoundEffect>("sounds/ten_seconds"),
+                volume = 1f
+            };
+        } 
+
+        public static void dispose() {
+            SHOTGUN.sound_effect.Dispose();
+            SCYTHE.sound_effect.Dispose();
+            LASER.sound_effect.Dispose();
+            DESTORY.sound_effect.Dispose();
+            TEN_SECONDS.sound_effect.Dispose();
+        }
+    }
 
     public class Game : Microsoft.Xna.Framework.Game
     {
@@ -100,6 +148,7 @@ namespace LDJTopDownShooter {
             Shotgun.load_content(Content);
             Scythe.load_content(GraphicsDevice);
             Laser.load_content(GraphicsDevice);
+            Sounds.load(Content);
         }
 
         protected override void UnloadContent() {
@@ -120,6 +169,7 @@ namespace LDJTopDownShooter {
             Shotgun.dispose();
             Scythe.dispose();
             Laser.dispose();
+            Sounds.dispose();
         }
 
         bool enable_weapon_randomizer = false;
@@ -169,6 +219,7 @@ namespace LDJTopDownShooter {
 
             if (time_till_last_ten_seconds > TEN_SECONDS) {
                 // TEN SECONDS HAVE PASSED
+                Sounds.TEN_SECONDS.Play();
 
                 if (enable_weapon_randomizer) {
                     randomize_weapon();
@@ -217,10 +268,7 @@ namespace LDJTopDownShooter {
                 if (_current_weapon == WeaponType.Shotgun) {
                     Shotgun.fire(_player.shotgun_shoot_point_world, _player.facing);
                 } else if (_current_weapon == WeaponType.Scythe) {
-                    Scythe.hit(
-                        _player.position,
-                        _player.facing,
-                        game_time.TotalGameTime.TotalSeconds);
+                    Scythe.hit(_player, game_time.TotalGameTime.TotalSeconds);
                 } else if (_current_weapon == WeaponType.Laser) {
                     Laser.turn_on();
                 }
@@ -232,9 +280,9 @@ namespace LDJTopDownShooter {
                 }
             }
 
-            Scythe.update(game_time);
+            Scythe.update(_player, game_time);
             Shotgun.update();
-            Laser.update(_player.position, _player.facing);
+            Laser.update(_player.laser_shoot_point_world, _player.facing);
 
             // shooting
 
@@ -335,6 +383,16 @@ namespace LDJTopDownShooter {
             // shotgun debug
             if(false) {
                 var (sx, sy) = World.get_screen_position(_player.shotgun_shoot_point_world);
+                _sprite_batch.Draw(
+                    _pixel_texture,
+                    new Rectangle(sx - 2, sy - 2, 4, 4),
+                    null,
+                    Color.Red);
+            }
+
+            // laser debug
+            if (false) {
+                var (sx, sy) = World.get_screen_position(_player.laser_shoot_point_world);
                 _sprite_batch.Draw(
                     _pixel_texture,
                     new Rectangle(sx - 2, sy - 2, 4, 4),

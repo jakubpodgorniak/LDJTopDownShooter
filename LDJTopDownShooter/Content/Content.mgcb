@@ -111,6 +111,36 @@
 /processorParam:TextureFormat=Color
 /build:shadow.png
 
+#begin sounds/destroy.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:sounds/destroy.wav
+
+#begin sounds/laser.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:sounds/laser.wav
+
+#begin sounds/scythe.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:sounds/scythe.wav
+
+#begin sounds/shotgun.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:sounds/shotgun.wav
+
+#begin sounds/ten_seconds.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:sounds/ten_seconds.wav
+
 #begin start-ui.png
 /importer:TextureImporter
 /processor:TextureProcessor

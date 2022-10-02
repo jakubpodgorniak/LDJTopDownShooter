@@ -29,6 +29,9 @@ public class Player
 
     public Vector2 shotgun_shoot_point_relative = new Vector2(0.4f, 0.165f);
     public Vector2 shotgun_shoot_point_world = Vector2.Zero;
+    
+    public Vector2 laser_shoot_point_relative = new Vector2(0.37f, 0.185f);
+    public Vector2 laser_shoot_point_world = Vector2.Zero;
 
     private bool is_dead = false;
 
@@ -73,9 +76,12 @@ public class Player
         }
 
         var character_rotation = get_rotation();
+        
         var shotgun_shot_point_relative_rotated = World.rotate_vector2d_by_angle(shotgun_shoot_point_relative, character_rotation);
-
         shotgun_shoot_point_world = position + shotgun_shot_point_relative_rotated;
+
+        var laser_shot_point_relative_rotated = World.rotate_vector2d_by_angle(laser_shoot_point_relative, character_rotation);
+        laser_shoot_point_world = position + laser_shot_point_relative_rotated;
 
         // movement
 
@@ -121,8 +127,8 @@ public static class EnemiesManager {
     private static Enemy[] enemies = new Enemy[MAX_ENEMIES_COUNT];
 
     private static Queue<int> inactive_enemies_indexes = new Queue<int>();
-    private static List<Enemy> enemies_going_in = new List<Enemy>(MAX_ENEMIES_COUNT);
-    private static List<Enemy> fighting_enemies = new List<Enemy>(MAX_ENEMIES_COUNT);
+    public static List<Enemy> enemies_going_in = new List<Enemy>(MAX_ENEMIES_COUNT);
+    public static List<Enemy> fighting_enemies = new List<Enemy>(MAX_ENEMIES_COUNT);
 
     public const int SPAWNERS_COUNT = 9;
     private static EnemySpawner[] spawners = new EnemySpawner[SPAWNERS_COUNT];
@@ -455,6 +461,7 @@ public static class EnemiesManager {
         enemy.health -= damage;
 
         if (enemy.health <= 0) {
+            Sounds.DESTORY.Play();
             Highscore.gain_score(1);
             inactivate_enemy(enemy);
         }
@@ -532,6 +539,8 @@ public static class Shotgun {
         }
 
         next_bullet_index += BULLETS_PER_SINGLE_SHOT;
+
+        Sounds.SHOTGUN.Play();
     }
 
     public static void update() {
@@ -633,6 +642,19 @@ public static class Scythe {
                 smooth_radians[i] = MIN_SMOOTH_RADIAN + (i * step);
             }
         }
+
+        // setup relative positions
+        const float ARCH_DISTANCE = 0.75f;
+        Vector2 first_hit_point_facing = Vector2.UnitY;
+        float full_arch = MathF.PI;
+
+        for (int i = 0; i < HIT_POINTS_NUMBER; i++) {
+            var hit_point = hit_points[i];
+
+            Vector2 rotated_facing = World.rotate_vector2d_by_angle(first_hit_point_facing, -(full_arch * smooth_radians[i]));
+
+            hit_point.player_relative_position = rotated_facing * (ARCH_DISTANCE * scythe_range_ratios[i]);
+        }
     }
 
     public static void load_content(GraphicsDevice device) {
@@ -644,24 +666,30 @@ public static class Scythe {
         _pixel_texture.Dispose();    
     }
 
-    public static void hit(Vector2 origin, Vector2 facing, double now) {
-        const float ARCH_DISTANCE = 0.75f;
-        Vector2 first_hit_point_facing = World.rotate_vector2d_by_angle(facing, 1.57f);
-        float full_arch = MathF.PI;
-
+    public static void hit(Player player, double now) {
         for (int i = 0; i < HIT_POINTS_NUMBER; i++) {
             var hit_point = hit_points[i];
                 
             hit_point.activity_start_time = now + (i * DELAY_BETWEEN_HIT_POINTS);
             hit_point.activity_end_time = hit_point.activity_start_time + HIT_POINT_ACTIVITY_TIME;
-
-            Vector2 rotated_facing = World.rotate_vector2d_by_angle(first_hit_point_facing, -(full_arch * smooth_radians[i]));
-
-            hit_point.collider.position = origin + (rotated_facing * (ARCH_DISTANCE * scythe_range_ratios[i]));
         }
+
+        foreach (var enemy in EnemiesManager.enemies_going_in) {
+            if (Vector2.DistanceSquared(enemy.position, player.position) < 0.2f) {
+                EnemiesManager.gain_damage(enemy, 10.0f);
+            } 
+        }
+
+        foreach (var enemy in EnemiesManager.fighting_enemies) {
+            if (Vector2.DistanceSquared(enemy.position, player.position) < 0.2f) {
+                EnemiesManager.gain_damage(enemy, 10.0f);
+            }
+        }
+
+        Sounds.SCYTHE.Play();
     }
 
-    public static void update(GameTime game_time) {
+    public static void update(Player player, GameTime game_time) {
         foreach (var hit_point in hit_points) {
             hit_point.is_active = hit_point.activity_start_time <= game_time.TotalGameTime.TotalSeconds
                 && hit_point.activity_end_time >= game_time.TotalGameTime.TotalSeconds;
@@ -672,16 +700,22 @@ public static class Scythe {
                 continue;
             }
 
-            foreach (var enemy in EnemiesManager.get_enemies()) {
-                if (enemy.state == EnemyState.None || enemy.state == EnemyState.Inactive) {
-                    continue;
-                }
+            var hit_point_relative_rotated = World.rotate_vector2d_by_angle(hit_point.player_relative_position, player.get_rotation());
+            hit_point.collider.position = player.position + hit_point_relative_rotated;
 
-                if (CollisionDetection.check_circle_point_collision(enemy.collider, hit_point.collider)) {
-                    EnemiesManager.gain_damage(enemy, 10.0f);
-                    continue;
-                }
+            foreach (var enemy in EnemiesManager.enemies_going_in) {
+                kill_if_collision(enemy, hit_point);
             }
+
+            foreach (var enemy in EnemiesManager.fighting_enemies) {
+                kill_if_collision(enemy, hit_point);
+            }
+        }
+    }
+
+    private static void kill_if_collision(Enemy enemy, ScytheHitPoint hit_point) {
+        if (CollisionDetection.check_circle_point_collision(enemy.collider, hit_point.collider)) {
+            EnemiesManager.gain_damage(enemy, 10.0f);
         }
     }
 
@@ -809,6 +843,7 @@ public class Bullet {
 }
 
 public class ScytheHitPoint { 
+    public Vector2 player_relative_position;
     public PointCollider collider;
     public double activity_start_time;
     public double activity_end_time;
