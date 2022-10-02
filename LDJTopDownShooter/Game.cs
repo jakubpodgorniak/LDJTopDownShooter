@@ -208,7 +208,7 @@ namespace LDJTopDownShooter {
                 Highscore.reset_score();
                 ten_seconds_progress = 0;
                 counter_start_seconds = game_time.TotalGameTime.TotalSeconds;
-                randomize_weapon();
+                randomize_weapon(any: true);
                 State = GameState.Running;
             }
 
@@ -240,6 +240,7 @@ namespace LDJTopDownShooter {
                 were_keys_pressed = Keyboard.GetState().GetPressedKeyCount() > 0;
                 EnemiesManager.reset();
                 Shotgun.reset();
+                Explosions.reset();
                 Laser.turn_off();
                 _player.position = new Vector2(5, 2.8125f);
                 set_weapon(WeaponType.Shotgun);
@@ -301,18 +302,18 @@ namespace LDJTopDownShooter {
             }
         }
 
-        private void randomize_weapon() {
+        private void randomize_weapon(bool any = false) {
             var other_weapons = new List<WeaponType>();
 
-            if (_current_weapon != WeaponType.Shotgun) {
+            if (any || _current_weapon != WeaponType.Shotgun) {
                 other_weapons.Add(WeaponType.Shotgun);
             }
 
-            if (_current_weapon != WeaponType.Scythe) {
+            if (any || _current_weapon != WeaponType.Scythe) {
                 other_weapons.Add(WeaponType.Scythe);
             }
 
-            if (_current_weapon != WeaponType.Laser) {
+            if (any || _current_weapon != WeaponType.Laser) {
                 other_weapons.Add(WeaponType.Laser);
             }
 

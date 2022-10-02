@@ -503,11 +503,11 @@ public class EnemySpawner {
 }
 
 public static class Shotgun {
-    public const int BULLETS_PER_SINGLE_SHOT = 8;
-    public const int MAX_BULLETS = 8 * 13;
+    public const int BULLETS_PER_SINGLE_SHOT = 10;
+    public const int MAX_BULLETS = 100;
     public const float BULLET_RADIANS_DEVIATION = 0.45f;
     public const float MAX_DISTANCE_DISCREPANCY = 0.15f;
-    public const float DELAY_BETWEEN_SHOTS = 0.35f;
+    public const float DELAY_BETWEEN_SHOTS = 0.5f;
 
     private static Bullet[] bullets = new Bullet[MAX_BULLETS];
     private static int next_bullet_index = 0;
@@ -942,6 +942,14 @@ public static class Explosions {
 
         foreach (var explosion in explosions_pool) {
             available_explosions_indices.Enqueue(explosion.index);
+        }
+    }
+
+    public static void reset() {
+        foreach (var explosion in explosions_pool) {
+            explosion.fired = false;
+            explosion.is_running = false;
+            explosion.frame = 0;
         }
     }
 
