@@ -252,9 +252,14 @@ public static class EnemiesManager {
         var enemy_index = inactive_enemies_indexes.Dequeue();
         var enemy = enemies[enemy_index];
 
+        const float LEVEL_RATIO = 0.05f;
+        const float MAX_LEVEL_RATIO = 0.5f;
+        float additional_speed_by_level = Math.Min(Game.TEN_SECONDS_LEVEL * LEVEL_RATIO, MAX_LEVEL_RATIO);
+
+
         enemy.position = new Vector2(spawner.position.X, spawner.position.Y);
         enemy.facing = spawner.direction;
-        enemy.movement_speed = 0.5f + Game.randomf();
+        enemy.movement_speed = 0.3f + (0.8f * Game.randomf()) + additional_speed_by_level;
         enemy.rotation_speed = 3f;
         enemy.state = EnemyState.GoesIn;
         enemy.collider = new CircleCollider {

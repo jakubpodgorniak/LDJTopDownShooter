@@ -65,17 +65,14 @@ namespace LDJTopDownShooter {
     {
         private static GameState State  = GameState.Stopped;
 
-        private static Dictionary<WeaponType, string> weapons_names = new Dictionary<WeaponType, string> {
-            [WeaponType.Shotgun] = "Shotgun",
-            [WeaponType.Scythe] = "Scythe",
-            [WeaponType.Laser] = "Laser"
-        };
-
         public const double TEN_SECONDS = 10.0;
         public const double TEN_SECONDS_INVERSE = 1.0 / TEN_SECONDS;
 
         public static float delta_time { get; private set; }
         public static Random random = new Random();
+
+        private static int ten_seconds_counter = 0;
+        public static int TEN_SECONDS_LEVEL => ten_seconds_counter;
 
         public static float randomf() => (float)random.NextDouble();
 
@@ -114,7 +111,7 @@ namespace LDJTopDownShooter {
 
             base.Initialize();
 
-            _player = new Player() { position = new Vector2 (5, 2.8125f), immortal = true };
+            _player = new Player() { position = new Vector2 (5, 2.8125f), immortal = false };
             _current_weapon = WeaponType.Shotgun;
         }
 
@@ -177,7 +174,7 @@ namespace LDJTopDownShooter {
             Sounds.dispose();
         }
 
-        bool enable_weapon_randomizer = false;
+        bool enable_weapon_randomizer = true;
         //bool enable_weapon_randomizer = true;
         bool render_enemies_debug_data = false;
 
@@ -211,6 +208,7 @@ namespace LDJTopDownShooter {
                 Highscore.reset_score();
                 ten_seconds_progress = 0;
                 counter_start_seconds = game_time.TotalGameTime.TotalSeconds;
+                randomize_weapon();
                 State = GameState.Running;
             }
 
@@ -224,6 +222,8 @@ namespace LDJTopDownShooter {
 
             if (time_till_last_ten_seconds > TEN_SECONDS) {
                 // TEN SECONDS HAVE PASSED
+                ten_seconds_counter += 1;
+
                 Sounds.TEN_SECONDS.Play();
 
                 if (enable_weapon_randomizer) {
@@ -242,6 +242,8 @@ namespace LDJTopDownShooter {
                 Shotgun.reset();
                 Laser.turn_off();
                 _player.position = new Vector2(5, 2.8125f);
+                set_weapon(WeaponType.Shotgun);
+                ten_seconds_counter = 0;
                 State = GameState.Stopped;
                 return;
             }
@@ -249,7 +251,7 @@ namespace LDJTopDownShooter {
             // enemies spawn
             double current_game_time = game_time.TotalGameTime.TotalSeconds;
 
-            if ((current_game_time - last_spawn_time) > spawn_every) {
+            if ((current_game_time - last_spawn_time) > getNextSpawnTime()) {
 
                 EnemiesManager.spawn_random_enemy();
 
@@ -257,15 +259,14 @@ namespace LDJTopDownShooter {
             }
 
             // enemies spawn
-
-            // change weapon
-            if (CustomInput.is_key_down(Keys.D1)) {
-                set_weapon(WeaponType.Shotgun);
-            } else if (CustomInput.is_key_down(Keys.D2)) {
-                set_weapon(WeaponType.Scythe);
-            } else if (CustomInput.is_key_down(Keys.D3)) {
-                set_weapon(WeaponType.Laser);
-            }
+            //// change weapon
+            //if (CustomInput.is_key_down(Keys.D1)) {
+            //    set_weapon(WeaponType.Shotgun);
+            //} else if (CustomInput.is_key_down(Keys.D2)) {
+            //    set_weapon(WeaponType.Scythe);
+            //} else if (CustomInput.is_key_down(Keys.D3)) {
+            //    set_weapon(WeaponType.Laser);
+            //}
             // change weapon
 
             // shooting
@@ -326,8 +327,14 @@ namespace LDJTopDownShooter {
             _current_weapon = new_weapon;
         }
 
+        private static double getNextSpawnTime() {
+            return Math.Max(spawn_every_seconds_min, spawn_every_seconds_base - (TEN_SECONDS_LEVEL * spawn_every_seconds_gain));
+        }
+
         private static double last_spawn_time;
-        private static double spawn_every = 0.25f;
+        private static double spawn_every_seconds_base = 1f;
+        private static double spawn_every_seconds_gain = 0.1f;
+        private static double spawn_every_seconds_min = 0.2f;
 
         protected override void Draw(GameTime gameTime)
         {
