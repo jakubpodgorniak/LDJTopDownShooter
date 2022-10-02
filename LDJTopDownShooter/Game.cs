@@ -192,6 +192,11 @@ namespace LDJTopDownShooter {
             if (Keyboard.GetState().IsKeyDown(Keys.Escape))
                 Exit();
 
+            if (CustomInput.is_key_down(Keys.F)) {
+                _graphics.IsFullScreen = !_graphics.IsFullScreen;
+                _graphics.ApplyChanges();
+            }
+
             if (State == GameState.Stopped) {
                 UpdateStoppedGame(game_time);
             } else {
@@ -325,7 +330,11 @@ namespace LDJTopDownShooter {
                 other_weapons.Add(WeaponType.Laser);
             }
 
-            set_weapon(other_weapons[random.Next(0, 2)]);
+            if (any) {
+                set_weapon(other_weapons[random.Next(0, 3)]);
+            } else {
+                set_weapon(other_weapons[random.Next(0, 2)]);
+            }
         }
 
         private void set_weapon(WeaponType new_weapon) {
@@ -360,15 +369,25 @@ namespace LDJTopDownShooter {
                 Color.White);
        
             EnemiesManager.render_enemies_going_in(_sprite_batch, render_enemies_debug_data);
-            Shotgun.render(_sprite_batch);
+         
             //Scythe.render(_sprite_batch);
-            Laser.render(_sprite_batch);
+         
 
             // walls and doors
             _sprite_batch.Draw(
                 _map_texture,
                 new Rectangle(0, 0, 1280, 720),
                 new Rectangle(0, 0, 1280, 720),
+                Color.White);
+
+            Shotgun.render(_sprite_batch);
+            Laser.render(_sprite_batch);
+
+            // walls and doors
+            _sprite_batch.Draw(
+                _start_ui,
+                new Rectangle(0, 0, 1280, 720),
+                new Rectangle(0, 720, 1280, 720),
                 Color.White);
 
             // render jason

@@ -43,19 +43,19 @@ namespace LDJTopDownShooter {
         public static void render_high_score(SpriteBatch sprite_batch, Texture2D pixel_texture, SpriteFont font, string min_sec) {
             sprite_batch.Draw(
                 pixel_texture,
-                new Rectangle(38, 513, 268, 168),
+                new Rectangle(38, 471, 268, 210),
                 new Color(0, 0, 0, 0.81f));
 
             sprite_batch.DrawString(
                 font,
                 $"Score: {current_score}",
-                new Vector2(48, 521),
+                new Vector2(48, 475),
                 Color.White);
 
             sprite_batch.DrawString(
                 font,
                 $"Highscore: {high_score}",
-                new Vector2(48, 576),
+                new Vector2(48, 555),
                 Color.White);
 
             sprite_batch.DrawString(
