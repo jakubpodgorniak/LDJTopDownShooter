@@ -269,7 +269,7 @@ namespace LDJTopDownShooter {
             // shooting
             if (CustomInput.is_mouse_button_down(MouseButton.Left)) {
                 if (_current_weapon == WeaponType.Shotgun) {
-                    Shotgun.fire(_player.shotgun_shoot_point_world, _player.facing);
+                    Shotgun.fire(_player.shotgun_shoot_point_world, _player.facing, game_time);
                 } else if (_current_weapon == WeaponType.Scythe) {
                     Scythe.hit(_player, game_time.TotalGameTime.TotalSeconds);
                 } else if (_current_weapon == WeaponType.Laser) {

@@ -502,10 +502,11 @@ public static class Shotgun {
     public const int MAX_BULLETS = 100;
     public const float BULLET_RADIANS_DEVIATION = 0.3f;
     public const float MAX_DISTANCE_DISCREPANCY = 0.15f;
+    public const float DELAY_BETWEEN_SHOTS = 0.35f;
 
     private static Bullet[] bullets = new Bullet[MAX_BULLETS];
     private static int next_bullet_index = 0;
-    private static int first_bullet_index = 0;
+    private static float last_shot_time = 0f;
 
     private static Texture2D _bullet_texture;
 
@@ -525,8 +526,17 @@ public static class Shotgun {
         _bullet_texture.Dispose();
     }
 
-    public static void fire(Vector2 origin, Vector2 direction) {
+    public static void fire(Vector2 origin, Vector2 direction, GameTime game_time) {
+        float now = (float)game_time.TotalGameTime.TotalSeconds;
+        float time_since_last_shot = now - last_shot_time;
+
+        if (time_since_last_shot < DELAY_BETWEEN_SHOTS) {
+            return;
+        }
+        last_shot_time = now;
+
         direction.Normalize();
+
 
         if (next_bullet_index >= MAX_BULLETS) {
             next_bullet_index = 0;
@@ -602,8 +612,8 @@ public static class Shotgun {
                 var (x, y) = World.get_screen_position(bullet.collider.position);
                 sprite_batch.Draw(
                     _bullet_texture,
-                    new Rectangle(x - 4, y - 4, 8, 8),
-                    Color.White);
+                    new Rectangle(x - 2, y - 2, 4, 4),
+                    Color.Black);
             }
         }
     }
