@@ -40,7 +40,7 @@ namespace LDJTopDownShooter {
                 Color.White);
         }
 
-        public static void render_high_score(SpriteBatch sprite_batch, Texture2D pixel_texture, SpriteFont font) {
+        public static void render_high_score(SpriteBatch sprite_batch, Texture2D pixel_texture, SpriteFont font, string min_sec) {
             sprite_batch.Draw(
                 pixel_texture,
                 new Rectangle(38, 513, 268, 168),
@@ -60,7 +60,7 @@ namespace LDJTopDownShooter {
 
             sprite_batch.DrawString(
                 font,
-                $"Survived: 1m 43s",
+                $"Survived: {min_sec}",
                 new Vector2(48, 631),
                 Color.White);
         }

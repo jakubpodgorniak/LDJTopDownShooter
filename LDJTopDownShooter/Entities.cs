@@ -698,6 +698,10 @@ public static class Scythe {
     }
 
     public static void hit(Player player, double now) {
+        if (now - hit_start_time < HIT_ANIMATION_TIME) {
+            return;
+        }
+
         hit_start_time = now;
 
         for (int i = 0; i < HIT_POINTS_NUMBER; i++) {

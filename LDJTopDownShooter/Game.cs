@@ -71,6 +71,8 @@ namespace LDJTopDownShooter {
         public static float delta_time { get; private set; }
         public static Random random = new Random();
 
+        private static double game_start_time;
+        private static double game_end_time;
         private static int ten_seconds_counter = 0;
         public static int TEN_SECONDS_LEVEL => ten_seconds_counter;
 
@@ -81,6 +83,8 @@ namespace LDJTopDownShooter {
 
         private SpriteFont _arial10;
         private SpriteFont _rajdhani28;
+        private SpriteFont _rajdhani24;
+        private SpriteFont _rajdhani16;
         private Texture2D _character_texture;
         private Texture2D _ui_texture;
         private Texture2D _pixel_texture;
@@ -135,6 +139,8 @@ namespace LDJTopDownShooter {
             _sprite_batch = new SpriteBatch(GraphicsDevice);
             _arial10 = Content.Load<SpriteFont>("fonts/Arial10");
             _rajdhani28 = Content.Load<SpriteFont>("fonts/Rajdhani28");
+            _rajdhani24 = Content.Load<SpriteFont>("fonts/Rajdhani24");
+            _rajdhani16 = Content.Load<SpriteFont>("fonts/Rajdhani16");
             _character_texture = Content.Load<Texture2D>("player");
             _ui_texture = Content.Load<Texture2D>("ui");
             _map_texture = Content.Load<Texture2D>("map");
@@ -209,6 +215,7 @@ namespace LDJTopDownShooter {
                 ten_seconds_progress = 0;
                 counter_start_seconds = game_time.TotalGameTime.TotalSeconds;
                 randomize_weapon(any: true);
+                game_start_time = game_time.TotalGameTime.TotalSeconds;
                 State = GameState.Running;
             }
 
@@ -245,6 +252,7 @@ namespace LDJTopDownShooter {
                 _player.position = new Vector2(5, 2.8125f);
                 set_weapon(WeaponType.Shotgun);
                 ten_seconds_counter = 0;
+                game_end_time = game_time.TotalGameTime.TotalSeconds;
                 State = GameState.Stopped;
                 return;
             }
@@ -471,9 +479,9 @@ namespace LDJTopDownShooter {
                 _sprite_batch.Draw(_start_ui, new Rectangle(0 ,0, 1280, 720), new Rectangle(0, 0, 1280, 720), Color.White);
 
                 if (Highscore.any_score) {
-                    Highscore.render_high_score(_sprite_batch, _pixel_texture, _rajdhani28);
+                    Highscore.render_high_score(_sprite_batch, _pixel_texture, _rajdhani24, 
+                        seconds_to_minutes_and_seconds(game_end_time - game_start_time));
                 }
-
             } else if (State == GameState.Running) {
                 // weapon icon
                 _sprite_batch.Draw(_ui_texture, new Rectangle(1160, 0, 128, 128), new Rectangle(256, 0, 128, 128), Color.White);
@@ -508,6 +516,22 @@ namespace LDJTopDownShooter {
                     new Rectangle(1221, 107, 8, progress_bar_height),
                     new Color(0.631f, 0.804f, 0.98f, 1.0f));
 
+                // timer background
+                _sprite_batch.Draw(
+                    _ui_texture,
+                    new Rectangle(90, 33, 128, 64),
+                    new Rectangle(0, 384, 128, 64),
+                    Color.White);
+
+                double game_total_seconds = gameTime.TotalGameTime.TotalSeconds - game_start_time;
+                string min_sec = seconds_to_minutes_and_seconds(game_total_seconds);
+                Vector2 size = _rajdhani16.MeasureString(min_sec);
+                _sprite_batch.DrawString(
+                    _rajdhani16,
+                    min_sec,
+                    new Vector2(196 - size.X, 65 - (0.5f * size.Y)),
+                    Color.White);
+
                 // score
                 Highscore.render(_sprite_batch, _ui_texture, _rajdhani28);
 
@@ -541,6 +565,13 @@ namespace LDJTopDownShooter {
             _sprite_batch.End();
 
             base.Draw(gameTime);
+        }
+
+        private string seconds_to_minutes_and_seconds(double seconds) {
+            int m = (int)Math.Floor(seconds / 60f);
+            int s = (int)Math.Floor(seconds - (m * 60f));
+
+            return $"{m} m {s} s";
         }
     }
 }
