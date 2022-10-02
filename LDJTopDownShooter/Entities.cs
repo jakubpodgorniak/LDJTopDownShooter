@@ -32,7 +32,7 @@ public class Player
     public Vector2 shotgun_shoot_point_relative = new Vector2(0.4f, 0.165f);
     public Vector2 shotgun_shoot_point_world = Vector2.Zero;
     
-    public Vector2 laser_shoot_point_relative = new Vector2(0.37f, 0.185f);
+    public Vector2 laser_shoot_point_relative = new Vector2(0.33f, 0.180f);
     public Vector2 laser_shoot_point_world = Vector2.Zero;
 
     public Vector2 scythe_pivot_relative = new Vector2(0.1f, 0.1f);
@@ -805,12 +805,15 @@ public static class Laser {
         is_turn_on = false;
     }
 
-    public static void update(Vector2 origin, Vector2 direction) {
+    public static void update(Vector2 origin, Vector2 mouse_world_pos) {
         if (!is_turn_on) {
             return;
         }
 
         enemies_hit.Clear();
+
+        Vector2 direction = mouse_world_pos - origin;
+        direction.Normalize();
 
         Vector2 end = origin + (direction * LASER_LENGTH);
 
@@ -866,11 +869,11 @@ public static class Laser {
                 x,
                 y,
                 (int)Math.Floor(laser_direction.Length() * World.PIXELS_PER_UNIT),
-                3),
+                6),
             null,
-            Color.Red,
+            new Color(1f, 0f, 0f, 0.1f),
             radians,
-            Vector2.Zero,
+            new Vector2(0, 0),
             SpriteEffects.None,
             0);
     }

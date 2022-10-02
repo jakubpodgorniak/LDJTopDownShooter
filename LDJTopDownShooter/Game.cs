@@ -110,6 +110,8 @@ namespace LDJTopDownShooter {
 
         protected override void Initialize()
         {
+            this.IsMouseVisible = false;
+
             base.Initialize();
 
             _player = new Player() { position = new Vector2 (5, 2.8125f), immortal = true };
@@ -285,7 +287,9 @@ namespace LDJTopDownShooter {
 
             Scythe.update(_player, game_time);
             Shotgun.update();
-            Laser.update(_player.laser_shoot_point_world, _player.facing);
+
+            var mouse_world_pos = World.screen_2_world(CustomInput.mouse_vec2);
+            Laser.update(_player.laser_shoot_point_world, mouse_world_pos);
             Explosions.update(game_time);
 
             // shooting
@@ -507,6 +511,16 @@ namespace LDJTopDownShooter {
                         new Vector2(25, 150),
                         Color.Black);
                 }
+                
+                var mouse_position = CustomInput.mouse_vec2;
+                int mx = (int)mouse_position.X;
+                int my = (int)mouse_position.Y;
+
+                _sprite_batch.Draw(
+                    _ui_texture,
+                    new Rectangle(mx - 16, my - 16, 32, 32),
+                    new Rectangle(128, 256, 32, 32),
+                    new Color(1f, 1f, 1f, 0.75f));
             }
 
             _sprite_batch.End();
