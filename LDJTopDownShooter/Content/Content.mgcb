@@ -63,6 +63,18 @@
 /processorParam:TextureFormat=Compressed
 /build:fonts/Rajdhani28.spritefont
 
+#begin jason.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:jason.png
+
 #begin map.png
 /importer:TextureImporter
 /processor:TextureProcessor

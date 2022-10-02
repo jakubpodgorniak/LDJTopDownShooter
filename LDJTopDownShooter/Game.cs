@@ -41,6 +41,7 @@ namespace LDJTopDownShooter {
         private Texture2D _pixel_texture;
         private Texture2D _map_texture;
         private Texture2D _start_ui;
+        private Texture2D _jason_texture;
         private Player _player;
         private WeaponType _current_weapon;
         private RenderTarget2D _map_render_target;
@@ -90,6 +91,7 @@ namespace LDJTopDownShooter {
             _ui_texture = Content.Load<Texture2D>("ui");
             _map_texture = Content.Load<Texture2D>("map");
             _start_ui = Content.Load<Texture2D>("start-ui");
+            _jason_texture = Content.Load<Texture2D>("jason");
             _pixel_texture = new Texture2D(GraphicsDevice, 1, 1);
             _pixel_texture.SetData(new Color[] {Color.White});
 
@@ -107,6 +109,7 @@ namespace LDJTopDownShooter {
             _character_texture.Dispose();
             _ui_texture.Dispose();
             _pixel_texture.Dispose();
+            _jason_texture.Dispose();
             _start_ui.Dispose();
 
             _map_render_target.Dispose();
@@ -212,7 +215,7 @@ namespace LDJTopDownShooter {
             // shooting
             if (CustomInput.is_mouse_button_down(MouseButton.Left)) {
                 if (_current_weapon == WeaponType.Shotgun) {
-                    Shotgun.fire(_player.position, _player.facing);
+                    Shotgun.fire(_player.shotgun_shoot_point_world, _player.facing);
                 } else if (_current_weapon == WeaponType.Scythe) {
                     Scythe.hit(
                         _player.position,
@@ -268,7 +271,7 @@ namespace LDJTopDownShooter {
         }
 
         private static double last_spawn_time;
-        private static double spawn_every = 0.05f;
+        private static double spawn_every = 0.25f;
 
         protected override void Draw(GameTime gameTime)
         {
@@ -283,20 +286,7 @@ namespace LDJTopDownShooter {
                 new Rectangle(0, 0, 1280, 720),
                 new Rectangle(0, 720, 1280, 720),
                 Color.White);
-
-            var (x, y) = World.get_screen_position(_player.position);
-            float rotation = _player.get_rotation();
-            _sprite_batch.Draw(
-                _character_texture,
-                new Rectangle(x, y, 64, 64),
-                null,
-                Color.White,
-                rotation,
-                new Vector2(32, 32),
-                SpriteEffects.None, 0);
-            
-            _sprite_batch.DrawString(_arial10, rotation.ToString("F2", CultureInfo.InvariantCulture), new Vector2(x, y), Color.Black);
-
+       
             EnemiesManager.render_enemies_going_in(_sprite_batch, render_enemies_debug_data);
             Shotgun.render(_sprite_batch);
             Scythe.render(_sprite_batch);
@@ -308,6 +298,51 @@ namespace LDJTopDownShooter {
                 new Rectangle(0, 0, 1280, 720),
                 new Rectangle(0, 0, 1280, 720),
                 Color.White);
+
+            // render jason
+            var (x, y) = World.get_screen_position(_player.position);
+            float rotation = _player.get_rotation();
+            Rectangle junky_src_rect;
+            if (_current_weapon == WeaponType.Shotgun) {
+                junky_src_rect = new Rectangle(256, 0, 128, 128);
+            } else if (_current_weapon == WeaponType.Scythe) {
+                junky_src_rect = new Rectangle(128, 0, 128, 128);
+            } else {
+                junky_src_rect = new Rectangle(0, 0, 128, 128);
+            }
+
+            //shadow
+            _sprite_batch.Draw(
+                _jason_texture,
+                new Rectangle(x, y, 128, 128),
+                new Rectangle(384, 0, 128, 128),
+                new Color(0, 0, 0, 0.2f),
+                0,
+                new Vector2(64, 64),
+                SpriteEffects.None,
+                0);
+            // jason
+            _sprite_batch.Draw(
+                _jason_texture,
+                new Rectangle(x, y, 128, 128),
+                junky_src_rect,
+                Color.White,
+                rotation,
+                new Vector2(64, 64),
+                SpriteEffects.None,
+                0);
+
+            // shotgun debug
+            if(false) {
+                var (sx, sy) = World.get_screen_position(_player.shotgun_shoot_point_world);
+                _sprite_batch.Draw(
+                    _pixel_texture,
+                    new Rectangle(sx - 2, sy - 2, 4, 4),
+                    null,
+                    Color.Red);
+            }
+
+            // end render jason
 
             EnemiesManager.render_fighting_enemies(_sprite_batch, render_enemies_debug_data);
 
@@ -335,12 +370,13 @@ namespace LDJTopDownShooter {
                 // weapon icon
                 _sprite_batch.Draw(_ui_texture, new Rectangle(1160, 0, 128, 128), new Rectangle(256, 0, 128, 128), Color.White);
 
-                // weapon name
-                _sprite_batch.DrawString(
-                     _arial10,
-                     weapons_names[_current_weapon],
-                     new Vector2(1200, 48),
-                     Color.White);
+                if (_current_weapon == WeaponType.Shotgun) {
+                    _sprite_batch.Draw(_ui_texture, new Rectangle(1160, 0, 128, 128), new Rectangle(0, 256, 128, 128), Color.White);
+                } else if (_current_weapon == WeaponType.Scythe) {
+                    _sprite_batch.Draw(_ui_texture, new Rectangle(1160, 0, 128, 128), new Rectangle(128, 128, 128, 128), Color.White);
+                } else if (_current_weapon == WeaponType.Laser) {
+                    _sprite_batch.Draw(_ui_texture, new Rectangle(1160, 0, 128, 128), new Rectangle(0, 128, 128, 128), Color.White);
+                }
 
                 // ten seconds progres bar background
                 var progress_bar_segment_src = new Rectangle(256, 128, 128, 64);

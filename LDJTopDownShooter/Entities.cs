@@ -27,6 +27,9 @@ public class Player
     public Vector2 facing = Vector2.UnitX;
     public bool immortal = false;
 
+    public Vector2 shotgun_shoot_point_relative = new Vector2(0.4f, 0.165f);
+    public Vector2 shotgun_shoot_point_world = Vector2.Zero;
+
     private bool is_dead = false;
 
     public bool get_is_dead() => is_dead;
@@ -68,6 +71,11 @@ public class Player
 
             position = World.clamp_to_boundries(new_position);
         }
+
+        var character_rotation = get_rotation();
+        var shotgun_shot_point_relative_rotated = World.rotate_vector2d_by_angle(shotgun_shoot_point_relative, character_rotation);
+
+        shotgun_shoot_point_world = position + shotgun_shot_point_relative_rotated;
 
         // movement
 
