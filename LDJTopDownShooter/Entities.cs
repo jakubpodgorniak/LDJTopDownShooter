@@ -33,6 +33,9 @@ public class Player
     public Vector2 laser_shoot_point_relative = new Vector2(0.37f, 0.185f);
     public Vector2 laser_shoot_point_world = Vector2.Zero;
 
+    public Vector2 scythe_pivot_relative = new Vector2(0.1f, 0.1f);
+    public Vector2 scythe_pivot_world = Vector2.Zero;
+
     private bool is_dead = false;
 
     public bool get_is_dead() => is_dead;
@@ -83,6 +86,8 @@ public class Player
         var laser_shot_point_relative_rotated = World.rotate_vector2d_by_angle(laser_shoot_point_relative, character_rotation);
         laser_shoot_point_world = position + laser_shot_point_relative_rotated;
 
+        var scythe_pivot_relative_rotated = World.rotate_vector2d_by_angle(scythe_pivot_relative, character_rotation);
+        scythe_pivot_world = position + scythe_pivot_relative_rotated;
         // movement
 
         //rotation
@@ -464,6 +469,7 @@ public static class EnemiesManager {
             Sounds.DESTORY.Play();
             Highscore.gain_score(1);
             inactivate_enemy(enemy);
+            Explosions.play(enemy.collider.position);
         }
     }
 }
@@ -605,12 +611,14 @@ public static class Shotgun {
 
 public static class Scythe {
     private const int HIT_POINTS_NUMBER = 11;
-    private const float DELAY_BETWEEN_HIT_POINTS = 0.035f;
+    private const float DELAY_BETWEEN_HIT_POINTS = 0.025f;
     private const float HIT_POINT_ACTIVITY_TIME = 0.25f;
+    private const float HIT_ANIMATION_TIME = 0.3f;
     
     private static float[] scythe_range_ratios = new float[HIT_POINTS_NUMBER];
     private static float[] smooth_radians = new float[HIT_POINTS_NUMBER];
     private static ScytheHitPoint[] hit_points = new ScytheHitPoint[HIT_POINTS_NUMBER];
+    private static double hit_start_time = 0f;
 
     private static Texture2D _pixel_texture;
 
@@ -644,7 +652,8 @@ public static class Scythe {
         }
 
         // setup relative positions
-        const float ARCH_DISTANCE = 0.75f;
+        // const float ARCH_DISTANCE = 0.75f;
+        const float ARCH_DISTANCE = 0.55f;
         Vector2 first_hit_point_facing = Vector2.UnitY;
         float full_arch = MathF.PI;
 
@@ -667,6 +676,8 @@ public static class Scythe {
     }
 
     public static void hit(Player player, double now) {
+        hit_start_time = now;
+
         for (int i = 0; i < HIT_POINTS_NUMBER; i++) {
             var hit_point = hit_points[i];
                 
@@ -717,6 +728,19 @@ public static class Scythe {
         if (CollisionDetection.check_circle_point_collision(enemy.collider, hit_point.collider)) {
             EnemiesManager.gain_damage(enemy, 10.0f);
         }
+    }
+
+    public static bool is_animated(GameTime game_time) {
+        double seconds_from_hit = game_time.TotalGameTime.TotalSeconds - hit_start_time;
+
+        return seconds_from_hit < HIT_ANIMATION_TIME;
+    } 
+
+    public static double get_rotation(GameTime game_time) {
+        double seconds_from_hit = game_time.TotalGameTime.TotalSeconds - hit_start_time;
+        double progress = seconds_from_hit / HIT_ANIMATION_TIME;
+
+        return Math.PI * progress;
     }
 
     public static void render(SpriteBatch sprite_batch) {
@@ -840,6 +864,113 @@ public class Bullet {
     public PointCollider collider;
     //public Vector2 position;
     public Vector2 direction;
+}
+
+public class Explosion {
+    public int index = 0;
+    public float start_time;
+    public int frame;
+    public bool fired;
+    public bool is_running;
+    public Vector2 position;
+}
+
+public static class Explosions {
+    public const int EXPLOSIONS_COUNT = 40;
+    public const float EXPLOSION_DURATION_SECONDS = 0.33f;
+    
+    private static Explosion[] explosions_pool = new Explosion[EXPLOSIONS_COUNT];
+    private static Queue<int> available_explosions_indices = new Queue<int>();
+
+    private static readonly Rectangle[] frames = new Rectangle[20] {
+        new Rectangle(0, 0, 64, 64),
+        new Rectangle(64, 0, 64, 64),
+        new Rectangle(128, 0, 64, 64),
+        new Rectangle(192, 0, 64, 64),
+        new Rectangle(256, 0, 64, 64),
+
+        new Rectangle(0, 64, 64, 64),
+        new Rectangle(64, 64, 64, 64),
+        new Rectangle(128, 64, 64, 64),
+        new Rectangle(192, 64, 64, 64),
+        new Rectangle(256, 64, 64, 64),
+
+        new Rectangle(0, 128, 64, 64),
+        new Rectangle(64, 128, 64, 64),
+        new Rectangle(128, 128, 64, 64),
+        new Rectangle(192, 128, 64, 64),
+        new Rectangle(256, 128, 64, 64),
+
+        new Rectangle(0, 192, 64, 64),
+        new Rectangle(64, 192, 64, 64),
+        new Rectangle(128, 192, 64, 64),
+        new Rectangle(192, 192, 64, 64),
+        new Rectangle(256, 192, 64, 64),
+    };
+
+    static Explosions() {
+        for (int i = 0; i <EXPLOSIONS_COUNT; i++) {
+            explosions_pool[i] = new () { index = i };
+        }
+
+        foreach (var explosion in explosions_pool) {
+            available_explosions_indices.Enqueue(explosion.index);
+        }
+    }
+
+    public static void play(Vector2 position) {
+        if (available_explosions_indices.Count == 0) {
+            return;
+        }
+
+        var explosion_index = available_explosions_indices.Dequeue();
+        var explosion = explosions_pool[explosion_index];
+
+        explosion.position = position;
+        explosion.is_running = false;
+        explosion.fired = true;
+        explosion.frame = 0;
+    }
+
+    public static void update(GameTime game_time) {
+        double total_seconds = game_time.TotalGameTime.TotalSeconds;
+
+        foreach (var explosion in explosions_pool) {
+            if (!explosion.fired) {
+                continue;
+            }
+
+            if (!explosion.is_running) {
+                explosion.start_time = (float)game_time.TotalGameTime.TotalSeconds;
+                explosion.is_running = true;
+            }
+
+            double seconds_since_explosion = total_seconds - explosion.start_time;
+
+            explosion.frame = Math.Clamp((int)Math.Floor(frames.Length * (seconds_since_explosion / EXPLOSION_DURATION_SECONDS)), 0, frames.Length);
+
+            if (seconds_since_explosion > EXPLOSION_DURATION_SECONDS) {
+                available_explosions_indices.Enqueue(explosion.index);
+                explosion.fired = false;
+                explosion.is_running = false;
+            }
+        }
+    }
+
+    public static void render(SpriteBatch sprite_batch, Texture2D explosion_texture) {
+        foreach (var explosion in explosions_pool) {
+            if (!explosion.is_running) {
+                continue;
+            }
+
+            var (x, y) = World.get_screen_position(explosion.position);
+            sprite_batch.Draw(
+                explosion_texture,
+                new Rectangle(x - 32, y - 32, 64, 64),
+                frames[explosion.frame],
+                Color.White);
+        }
+    }
 }
 
 public class ScytheHitPoint { 

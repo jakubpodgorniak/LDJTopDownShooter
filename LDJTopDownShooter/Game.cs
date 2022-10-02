@@ -90,6 +90,7 @@ namespace LDJTopDownShooter {
         private Texture2D _map_texture;
         private Texture2D _start_ui;
         private Texture2D _jason_texture;
+        private Texture2D _explosion_texture;
         private Player _player;
         private WeaponType _current_weapon;
         private RenderTarget2D _map_render_target;
@@ -140,6 +141,7 @@ namespace LDJTopDownShooter {
             _map_texture = Content.Load<Texture2D>("map");
             _start_ui = Content.Load<Texture2D>("start-ui");
             _jason_texture = Content.Load<Texture2D>("jason");
+            _explosion_texture = Content.Load<Texture2D>("explosion");
             _pixel_texture = new Texture2D(GraphicsDevice, 1, 1);
             _pixel_texture.SetData(new Color[] {Color.White});
 
@@ -160,6 +162,7 @@ namespace LDJTopDownShooter {
             _pixel_texture.Dispose();
             _jason_texture.Dispose();
             _start_ui.Dispose();
+            _explosion_texture.Dispose();
 
             _map_render_target.Dispose();
             _ui_render_target.Dispose();
@@ -283,6 +286,7 @@ namespace LDJTopDownShooter {
             Scythe.update(_player, game_time);
             Shotgun.update();
             Laser.update(_player.laser_shoot_point_world, _player.facing);
+            Explosions.update(game_time);
 
             // shooting
 
@@ -337,7 +341,7 @@ namespace LDJTopDownShooter {
        
             EnemiesManager.render_enemies_going_in(_sprite_batch, render_enemies_debug_data);
             Shotgun.render(_sprite_batch);
-            Scythe.render(_sprite_batch);
+            //Scythe.render(_sprite_batch);
             Laser.render(_sprite_batch);
 
             // walls and doors
@@ -369,6 +373,27 @@ namespace LDJTopDownShooter {
                 new Vector2(64, 64),
                 SpriteEffects.None,
                 0);
+
+            if (_current_weapon == WeaponType.Scythe) {
+                var (sx, sy) = World.get_screen_position(_player.scythe_pivot_world);
+
+                float scythe_rotation = rotation;
+
+                if (Scythe.is_animated(gameTime)) {
+                    scythe_rotation -= (float)Scythe.get_rotation(gameTime);
+                } 
+
+                _sprite_batch.Draw(
+                    _jason_texture,
+                    new Rectangle(sx, sy, 128, 128),
+                    new Rectangle(0, 128, 128, 128),
+                    Color.White,
+                    scythe_rotation,
+                    new Vector2(64, 64),
+                    SpriteEffects.None,
+                    0);
+            }
+
             // jason
             _sprite_batch.Draw(
                 _jason_texture,
@@ -400,6 +425,17 @@ namespace LDJTopDownShooter {
                     Color.Red);
             }
 
+            // scythe debug
+            if (false) {
+                var (sx, sy) = World.get_screen_position(_player.scythe_pivot_world);
+                _sprite_batch.Draw(
+                    _pixel_texture,
+                    new Rectangle(sx - 2, sy - 2, 4, 4),
+                    null,
+                    Color.Red);
+
+            }
+
             // end render jason
 
             EnemiesManager.render_fighting_enemies(_sprite_batch, render_enemies_debug_data);
@@ -408,6 +444,8 @@ namespace LDJTopDownShooter {
                 EnemiesManager.render_heat_map(_sprite_batch);
                 EnemiesManager.render_spawners(_sprite_batch);
             }
+
+            Explosions.render(_sprite_batch, _explosion_texture);
 
             //World.render(_sprite_batch);
 
@@ -420,9 +458,9 @@ namespace LDJTopDownShooter {
             if (State == GameState.Stopped) {
                 _sprite_batch.Draw(_start_ui, new Rectangle(0 ,0, 1280, 720), new Rectangle(0, 0, 1280, 720), Color.White);
 
-                //if (Highscore.any_score) {
+                if (Highscore.any_score) {
                     Highscore.render_high_score(_sprite_batch, _pixel_texture, _rajdhani28);
-                //}
+                }
 
             } else if (State == GameState.Running) {
                 // weapon icon
