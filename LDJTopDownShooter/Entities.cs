@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -114,6 +115,7 @@ public class Player
             return;
         }
 
+        Sounds.DEAD.Play();
         is_dead = true;
     }
 
@@ -604,6 +606,19 @@ public static class Shotgun {
         }
     }
 
+    private static bool was_realoading = false;
+    public static void update_sound(GameTime game_time) {
+        float now = (float)game_time.TotalGameTime.TotalSeconds;
+        float time_since_last_shot = now - last_shot_time;
+
+        if (time_since_last_shot < DELAY_BETWEEN_SHOTS) {
+            was_realoading = true;
+        } else if (was_realoading) {
+            Sounds.SHOTGUN_READY.Play();
+            was_realoading = false;
+        }
+    }
+
     public static void reset() {
         foreach (var bullet in bullets) {
             destroy_bullet(bullet);
@@ -806,11 +821,25 @@ public static class Laser {
 
     public static bool is_on() => is_turn_on;
 
+    private static SoundEffectInstance laser_sound_instance;
+
     public static void turn_on() {
+        if (laser_sound_instance == null) {
+            laser_sound_instance = Sounds.LASER2.sound_effect.CreateInstance();
+            laser_sound_instance.IsLooped = true;
+            laser_sound_instance.Play();
+        }
+
         is_turn_on = true;
     }
 
     public static void turn_off() {
+        if (laser_sound_instance != null) {
+            laser_sound_instance.Stop();
+            laser_sound_instance.Dispose();
+            laser_sound_instance = null;
+        }
+
         is_turn_on = false;
     }
 
@@ -818,7 +847,6 @@ public static class Laser {
         if (!is_turn_on) {
             return;
         }
-
         enemies_hit.Clear();
 
         Vector2 direction = mouse_world_pos - origin;

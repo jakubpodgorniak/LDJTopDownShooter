@@ -28,6 +28,9 @@ namespace LDJTopDownShooter {
         public static Sound LASER;
         public static Sound DESTORY;
         public static Sound TEN_SECONDS;
+        public static Sound SHOTGUN_READY;
+        public static Sound LASER2;
+        public static Sound DEAD;
 
         public static void load(ContentManager content) {
             SHOTGUN = new() {
@@ -50,6 +53,18 @@ namespace LDJTopDownShooter {
                 sound_effect = content.Load<SoundEffect>("sounds/ten_seconds"),
                 volume = 1f
             };
+            SHOTGUN_READY = new() {
+                sound_effect = content.Load<SoundEffect>("sounds/shotgun_ready"),
+                volume = 1f
+            };
+            LASER2 = new() {
+                sound_effect = content.Load<SoundEffect>("sounds/laser3"),
+                volume = 1f
+            };
+            DEAD = new() {
+                sound_effect = content.Load<SoundEffect>("sounds/dead"),
+                volume = 1f
+            };
         } 
 
         public static void dispose() {
@@ -58,6 +73,9 @@ namespace LDJTopDownShooter {
             LASER.sound_effect.Dispose();
             DESTORY.sound_effect.Dispose();
             TEN_SECONDS.sound_effect.Dispose();
+            SHOTGUN_READY.sound_effect.Dispose();
+            LASER2.sound_effect.Dispose();
+            DEAD.sound_effect.Dispose();
         }
     }
 
@@ -209,7 +227,9 @@ namespace LDJTopDownShooter {
         bool were_keys_pressed = false;
 
         private void UpdateStoppedGame(GameTime game_time) {
-            if (!were_keys_pressed && (
+            double time_passed_since_game_end_time = game_time.TotalGameTime.TotalSeconds - game_end_time;
+
+            if (!were_keys_pressed && (time_passed_since_game_end_time > 0.25) && (
                 Keyboard.GetState().GetPressedKeyCount() > 0
                 || CustomInput.is_mouse_button_down(MouseButton.Left)
                 || CustomInput.is_mouse_button_down(MouseButton.Right)
@@ -302,6 +322,10 @@ namespace LDJTopDownShooter {
 
             Scythe.update(_player, game_time);
             Shotgun.update();
+
+            if (_current_weapon == WeaponType.Shotgun) {
+                Shotgun.update_sound(game_time);
+            }
 
             var mouse_world_pos = World.screen_2_world(CustomInput.mouse_vec2);
             Laser.update(_player.laser_shoot_point_world, mouse_world_pos);

@@ -137,6 +137,12 @@
 /processorParam:TextureFormat=Color
 /build:shadow.png
 
+#begin sounds/dead.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:sounds/dead.wav
+
 #begin sounds/destroy.wav
 /importer:WavImporter
 /processor:SoundEffectProcessor
@@ -149,11 +155,23 @@
 /processorParam:Quality=Best
 /build:sounds/laser.wav
 
+#begin sounds/laser3.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:sounds/laser3.wav
+
 #begin sounds/scythe.wav
 /importer:WavImporter
 /processor:SoundEffectProcessor
 /processorParam:Quality=Best
 /build:sounds/scythe.wav
+
+#begin sounds/shotgun_ready.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:sounds/shotgun_ready.wav
 
 #begin sounds/shotgun.wav
 /importer:WavImporter
