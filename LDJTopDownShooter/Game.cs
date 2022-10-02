@@ -231,7 +231,7 @@ namespace LDJTopDownShooter {
                 counter_start_seconds = total_seconds;
             }
 
-            _player.update();
+            _player.update(_current_weapon);
             EnemiesManager.update(_player);
 
             if (_player.get_is_dead()) {              // finish game

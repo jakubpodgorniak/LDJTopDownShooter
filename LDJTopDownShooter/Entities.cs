@@ -22,6 +22,8 @@ public class Player
 {
     public const float MOVEMENT_SPEED = 2.0f;
     public const float ROTATION_SPEED = 10.0f;
+    public const float MOVEMENT_SPEED_WITH_LASER = 0.5f;
+    public const float ROTATION_SPEED_WITH_LASER = 20f;
 
     public Vector2 position;
     public Vector2 facing = Vector2.UnitX;
@@ -42,7 +44,13 @@ public class Player
 
     public float get_rotation() => CharacterHelper.facing_2_rotation(facing);
 
-    public void update() {
+    public void update(WeaponType current_weapon) {
+        bool is_using_laser = current_weapon == WeaponType.Laser && Laser.is_on();
+
+        var (rotation_speed, movement_speed) = is_using_laser
+            ? (ROTATION_SPEED_WITH_LASER, MOVEMENT_SPEED_WITH_LASER)
+            : (ROTATION_SPEED, MOVEMENT_SPEED);
+
         // movement
         Vector2 move = Vector2.Zero;
         bool moved = false;
@@ -73,7 +81,7 @@ public class Player
 
         if (moved) {
             move.Normalize();
-            Vector2 new_position = position + (move * Game.delta_time * MOVEMENT_SPEED);
+            Vector2 new_position = position + (move * Game.delta_time * movement_speed);
 
             position = World.clamp_to_boundries(new_position);
         }
@@ -95,17 +103,9 @@ public class Player
         Vector2 mouse_world_pos = World.screen_2_world(mouse_pos);
         Vector2 new_facing = mouse_world_pos - position;
         new_facing.Normalize();
-        facing = Vector2.Lerp(facing, new_facing, ROTATION_SPEED * Game.delta_time);
 
-        //if (CustomInput.is_key_pressed(Keys.Q)) {
-        //    float rotation_angle = ROTATION_SPEED * Game.delta_time;
+        facing = Vector2.Lerp(facing, new_facing, rotation_speed * Game.delta_time);
 
-        //    facing = World.rotate_vector2d_by_angle(facing, rotation_angle);
-        //} else if (CustomInput.is_key_pressed(Keys.E)) {
-        //    float rotation_angle = (-1f) * ROTATION_SPEED * Game.delta_time;
-
-        //    facing = World.rotate_vector2d_by_angle(facing, rotation_angle);
-        //}
         //rotation
     }
 
@@ -498,9 +498,9 @@ public class EnemySpawner {
 }
 
 public static class Shotgun {
-    public const int BULLETS_PER_SINGLE_SHOT = 5;
-    public const int MAX_BULLETS = 100;
-    public const float BULLET_RADIANS_DEVIATION = 0.3f;
+    public const int BULLETS_PER_SINGLE_SHOT = 8;
+    public const int MAX_BULLETS = 8 * 13;
+    public const float BULLET_RADIANS_DEVIATION = 0.45f;
     public const float MAX_DISTANCE_DISCREPANCY = 0.15f;
     public const float DELAY_BETWEEN_SHOTS = 0.35f;
 
@@ -551,7 +551,14 @@ public static class Shotgun {
             bullet.collider = new PointCollider { 
                 position = origin + (direction * Game.randomf() * MAX_DISTANCE_DISCREPANCY)
             };
-            bullet.direction = World.rotate_vector2d_by_angle(direction, Game.randomf() * BULLET_RADIANS_DEVIATION);
+
+            // random sign
+            int zero_or_one = Game.random.Next(0, 2);
+            int sign = zero_or_one == 0
+                ? -1
+                : 1;
+
+            bullet.direction = World.rotate_vector2d_by_angle(direction, sign * Game.randomf() * BULLET_RADIANS_DEVIATION);
         }
 
         next_bullet_index += BULLETS_PER_SINGLE_SHOT;
@@ -787,6 +794,8 @@ public static class Laser {
     public static void dispose() {
         _pixel_texture.Dispose();
     }
+
+    public static bool is_on() => is_turn_on;
 
     public static void turn_on() {
         is_turn_on = true;
